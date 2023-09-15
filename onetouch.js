@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      0.1
+// @version      0.11
 // @description  우측 하단의 공 클릭 or ctrl+/ 로 원터치 번역 & 번역창 클릭으로 꺼짐
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
-// @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
+// @icon         https://avatars.githubusercontent.com/u/145153685?v=4
 // @grant        none
 // ==/UserScript==
 
