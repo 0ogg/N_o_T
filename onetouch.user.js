@@ -42,6 +42,7 @@
       bottom: 0px;
       right: 0px;
       padding: 10px;
+      transition: width 0.2s, height 0.2s;
     }
   `;
 
@@ -189,20 +190,23 @@
     resizableDiv.style.cursor = "grabbing";
   }
 
-  function handleIconDrag(e) {
-    if (!isDragging) return;
+function handleIconDrag(e) {
+  if (!isDragging) return;
 
-    // 새로운 위치 계산
-    const right = window.innerWidth - e.clientX - offsetX;
-    const bottom = window.innerHeight - e.clientY - offsetY;
+  // 새로운 위치 계산
+  let right = window.innerWidth - e.clientX - offsetX;
+  let bottom = window.innerHeight - e.clientY - offsetY;
 
-    // div를 새 위치로 이동
-    resizableDiv.style.right = right + "px";
-    resizableDiv.style.bottom = bottom + "px";
+  // div를 새 위치로 이동
+  right = Math.min(Math.max(0, right), window.innerWidth - resizableDiv.offsetWidth);
+  bottom = Math.min(Math.max(0, bottom), window.innerHeight - resizableDiv.offsetHeight);
 
-    // 이벤트 기본 동작 막기
-    e.preventDefault();
-  }
+  resizableDiv.style.right = right + "px";
+  resizableDiv.style.bottom = bottom + "px";
+
+  // 이벤트 기본 동작 막기
+  e.preventDefault();
+}
 
   function handleIconDragEnd() {
     isDragging = false;
@@ -224,22 +228,25 @@
     // 커서 스타일 변경
     resizableDiv.style.cursor = "grabbing";
   }
+    
+function handleIconTouchMove(e) {
+  if (!isDragging) return;
 
-  function handleIconTouchMove(e) {
-    if (!isDragging) return;
+  // 터치 위치 계산
+  const touch = e.touches[0];
+  let right = window.innerWidth - touch.clientX - offsetX;
+  let bottom = window.innerHeight - touch.clientY - offsetY;
 
-    // 터치 위치 계산
-    const touch = e.touches[0];
-    const right = window.innerWidth - touch.clientX - offsetX;
-    const bottom = window.innerHeight - touch.clientY - offsetY;
+  // div를 새 위치로 이동
+  right = Math.min(Math.max(0, right), window.innerWidth - resizableDiv.offsetWidth);
+  bottom = Math.min(Math.max(0, bottom), window.innerHeight - resizableDiv.offsetHeight);
 
-    // div를 새 위치로 이동
-    resizableDiv.style.right = right + "px";
-    resizableDiv.style.bottom = bottom + "px";
+  resizableDiv.style.right = right + "px";
+  resizableDiv.style.bottom = bottom + "px";
 
-    // 이벤트 기본 동작 막기
-    e.preventDefault();
-  }
+  // 이벤트 기본 동작 막기
+  e.preventDefault();
+}
 
   function handleIconTouchEnd() {
     isDragging = false;
