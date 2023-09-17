@@ -48,7 +48,9 @@
   bottom: 0px;
   right: 0px;
   padding: 10px;
-  transition: width 0.2s, height 0.2s;
+  transition: width 0.2s, height 0.2s;    
+  backdrop-filter: blur(30px);
+
 }
 
 #extracted-text {
