@@ -178,13 +178,13 @@ span.hT {
     // 단축키 컨트롤 + /
     document.addEventListener('keydown', handleCtrlSlash);
     function handleCtrlSlash(event) {
-    // 눌린 키가 '/'이고 Ctrl 키가 동시에 눌렸는지 확인합니다.
-    if (event.key === '/' && event.ctrlKey) {    
-        event.preventDefault();
-        tWideClick();
-        getExtractedText(textExtraction);
+        // 눌린 키가 '/'이고 Ctrl 키가 동시에 눌렸는지 확인합니다.
+        if (event.key === '/' && event.ctrlKey) {
+            event.preventDefault();
+            tWideClick();
+            getExtractedText(textExtraction);
+        }
     }
-}
 
     // 스크립트 추출
     function getExtractedText(length) {
@@ -267,13 +267,61 @@ span.hT {
         // 드래그 타임아웃 초기화
         clearTimeout(dragTimeout);
     }
-    // 이동 이벤트 핸들러
+    // 아이콘 이동 함수
+    function handleIconTouchStart(e) {
+        // 터치 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
+        dragTimeout = setTimeout(function () {
+            isDragging = true;
+
+            // 드래그가 시작된 위치 저장
+            const touch = e.touches[0];
+            offsetX = touch.clientX - tMini.getBoundingClientRect().right;
+            offsetY = touch.clientY - tMini.getBoundingClientRect().bottom;
+            // 이벤트 기본 동작 막기
+            e.preventDefault();
+        }, 300);
+
+    }
+
+    function handleIconTouchMove(e) {
+        if (!isDragging) return;
+        // 이벤트 기본 동작 막기
+        e.preventDefault();
+
+        // 새로운 위치 계산
+        const touch = e.touches[0];
+        let right = window.innerWidth - touch.clientX - offsetX;
+        let bottom = window.innerHeight - touch.clientY - offsetY;
+
+        // div를 새 위치로 이동
+        right = Math.min(Math.max(0, right), window.innerWidth - tMini.offsetWidth);
+        bottom = Math.min(Math.max(0, bottom), window.innerHeight - tMini.offsetHeight);
+
+        tMini.style.right = right + "px";
+        tMini.style.bottom = bottom + "px";
+    }
+
+    function handleIconTouchEnd() {
+        isDragging = false;
+
+        // 위치 정보를 로컬 스토리지에 저장
+        const position = { right: parseFloat(tMini.style.right), bottom: parseFloat(tMini.style.bottom) };
+        localStorage.setItem("tBallP", JSON.stringify(position));
+
+        // 드래그 타임아웃 초기화
+        clearTimeout(dragTimeout);
+    }
+
+    // 터치 이벤트 핸들러
+    tMini.addEventListener("touchstart", handleIconTouchStart);
+    document.addEventListener("touchmove", handleIconTouchMove);
+    document.addEventListener("touchend", handleIconTouchEnd);
+
+    // 마우스 이벤트 핸들러는 그대로 유지
     tMini.addEventListener("mousedown", handleIconMouseDown);
     document.addEventListener("mousemove", handleIconDrag);
     document.addEventListener("mouseup", handleIconDragEnd);
-    tMini.addEventListener("touchstart", handleIconMouseDown);
-    document.addEventListener("touchmove", handleIconDrag);
-    document.addEventListener("touchend", handleIconDragEnd);
+
 
 
 
