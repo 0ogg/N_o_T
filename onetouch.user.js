@@ -181,7 +181,7 @@ span.hT {
         // 눌린 키가 '/'이고 Ctrl 키가 동시에 눌렸는지 확인합니다.
         if (event.key === '/' && event.ctrlKey) {
             event.preventDefault();
-            tWideClick();
+            tIconClick();
             getExtractedText(textExtraction);
         }
     }
