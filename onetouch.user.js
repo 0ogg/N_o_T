@@ -45,7 +45,6 @@
   max-width: 95%;
   background: var(--Tmain-color);
   height: 100%;
-  overflow: scroll;
   bottom: 0px;
   right: 0px;
   padding: 10px;
@@ -54,6 +53,7 @@
 
 #extracted-text {
   min-height: 90%;
+  overflow: scroll;
 }
 
 #ns-settings-div {
