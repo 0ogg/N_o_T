@@ -279,7 +279,7 @@ span.hT {
             offsetY = touch.clientY - tMini.getBoundingClientRect().bottom;
             // 이벤트 기본 동작 막기
             e.preventDefault();
-        }, 300);
+        }, 500);
 
     }
 
