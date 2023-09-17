@@ -378,7 +378,7 @@ span.hT {
     var longCopy = document.createElement('div');
     longCopy.id = 'ns-longCopy';
     longCopy.innerHTML = `
-    <div id="btnLong" class="longCopyBtn">Long</div><div id="btnCopy" class="longCopyBtn">Copy</div>
+    <div id="btnLong" class="longCopyBtn">장문</div><div id="btnCopy" class="longCopyBtn">복사</div>
   `;
     tWide.appendChild(longCopy);
     tWide.appendChild(extractedText);
