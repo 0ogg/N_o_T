@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번여가
 // @namespace    https://novelai.net/
-// @version      0.11
+// @version      1.0
 // @description  우측 하단의 공 클릭 or ctrl+/ 로 원터치 번역 & 번역창 클릭으로 꺼짐
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
-// @icon         https://avatars.githubusercontent.com/u/145153685?v=4
+// @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
 // @grant        none
 // ==/UserScript==
 (function() {
@@ -174,6 +174,16 @@ span.hT {
         tColorEx();
         tWide.style.display = 'none';
     }
+    // 단축키 컨트롤 + /
+    document.addEventListener('keydown', handleCtrlSlash);
+    function handleCtrlSlash(event) {
+    // 눌린 키가 '/'이고 Ctrl 키가 동시에 눌렸는지 확인합니다.
+    if (event.key === '/' && event.ctrlKey) {    
+        event.preventDefault();
+        tWideClick();
+        getExtractedText(textExtraction);
+    }
+}
 
     // 스크립트 추출
     function getExtractedText(length) {
