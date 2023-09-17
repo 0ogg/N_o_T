@@ -58,7 +58,7 @@
 
 #ns-settings-div {
   /* 설정창 스타일 */
-  min-width: 250px;
+  min-width: 240px;
   position: fixed;
   top: 50%;
   left: 50%;
