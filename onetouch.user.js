@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      1.1
-// @description  우측 하단의 공 클릭 or ctrl+/ 로 원터치 번역 & 번역창 클릭으로 꺼짐
+// @version      2.0
+// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋)
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
 // @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
@@ -16,7 +16,7 @@
     var cssCode = `
 :root {
   --Tmain-color: azure;
-  --Thighlight-color: black;
+  --Thighlight-color: inherit;
   --italic-active: normal;
   --bold-active: normal;
   --highlight-color: inherit;
@@ -48,9 +48,8 @@
   bottom: 0px;
   right: 0px;
   padding: 10px;
-  transition: width 0.2s, height 0.2s;    
-  backdrop-filter: blur(30px);
-
+  transition: width 0.2s, height 0.2s;
+    backdrop-filter: blur(30px);
 }
 
 #extracted-text {
@@ -70,6 +69,7 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   display: none;
   z-index: 9999;
+  backdrop-filter: blur(30px) !important;
 }
 
 #ns-settings-button {
@@ -82,7 +82,6 @@
   border-radius: 50%;
   z-index: 9999;
   background-image: url('https://novelai.net/_next/static/media/settings.37ac2cdf.svg');
-  background-repeat: no-repeat;
   background-size: cover;
   filter: invert(50%);
 }
@@ -96,7 +95,7 @@
 .ns-input {
   width: 80px;
   padding: 2px;
-  text-align: center;
+  backdrop-filter: blur(50px);
 }
 
 #ns-color-code {
@@ -124,8 +123,85 @@ span.hT {
   font-weight: var(--bold-active) !important;
   color: var(--highlight-color) !important;
 }
-`;
+.cStock {
+    text-align: center;
+    border-radius: 5px;
+    margin: 2px;
+    padding: 5px;
+    gap: 5px;
+    transition: background-color 0.3s;
+}
 
+.cStock:hover {
+    background-color: var(--Thighlight-color);
+    }
+
+    .btnOn {
+    color: var(--loader-color);
+    font-weight: bold;
+    }
+
+#stockDiv {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column; /* 요소들을 세로로 배치합니다 */
+  z-index: 10003;
+  background: var(--Tmain-color);
+  width: 80%;
+  max-width: 500px;
+  padding: 10px;
+  gap: 10px;
+  backdrop-filter: blur(30px);
+
+}
+.stockContainer {
+position: relative;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+    justify-content: space-between;
+}
+.cssInputStyle {
+padding: 5px 10px;
+  backdrop-filter: blur(50px);
+}
+
+.setBtn {
+background-color: inherit;
+border: 0px;
+margin: 2px 2px;
+padding: 2px 2px;
+}
+.setBtn:hover {
+  backdrop-filter: blur(50px);
+}
+.setBtn-name {
+width: 150px;
+}
+.setBtn-edit {
+right: 0px;
+    position: absolute;
+}
+#cssDel {
+flex: 1;
+width: 15%;
+padding: 10px;
+
+}
+#cssSave {
+flex: 3;
+padding: 10px;
+}
+#cssExit {
+flex: 1;
+width: 15%
+padding: 10px;
+}
+`;
+//  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
     // style 요소에 CSS 코드를 추가합니다.
     styleElement.textContent = cssCode;
     // style 요소를 문서의 head에 추가합니다.
@@ -134,13 +210,11 @@ span.hT {
 
     // 로컬 스토리지에서 설정 값을 로드합니다.
     var textExtraction = localStorage.getItem('textExtraction') || '750';
-    var translationMethod = localStorage.getItem('translationMethod') || '0';
     var italicActive = JSON.parse(localStorage.getItem('ns-italic')) || false;
     var boldActive = JSON.parse(localStorage.getItem('ns-bold')) || false;
     var highlightActive = JSON.parse(localStorage.getItem('ns-highlight')) || false;
     var colorCode = localStorage.getItem('colorCode') || 'ffffff';
     var tMainColor = localStorage.getItem('tMainColor');
-    var tBackColor = localStorage.getItem('tBackColor');
 
 
     // 스킨 세팅
@@ -328,7 +402,7 @@ span.hT {
 
 
 
-    // 새로운 div 요소를 생성하여 설정창을 나타낼 것입니다.
+    // 설정창
     var nsSettingsDiv = document.createElement('div');
     nsSettingsDiv.id = 'ns-settings-div';
 
@@ -345,10 +419,134 @@ span.hT {
     </div>
     <label for="ns-color-code">하이라이트 색상: #</label>
     <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br><br>
+    <label>Css 스토리지</label>
+    <button id="cssPlus" class="setBtn">+ 추가</button>
+    <div id="cssList"></div>
   `;
-
     // 생성한 설정창을 문서의 body에 추가합니다.
     document.body.appendChild(nsSettingsDiv);
+
+    // css 스토리지
+    var cssStock = JSON.parse(localStorage.getItem('cssStock')) || [];
+    // 스토리지 저장 함수
+    function uploadStock() {
+        localStorage.setItem('cssStock', JSON.stringify(cssStock));
+    }
+    document.getElementById('cssPlus').addEventListener('click', addStock);
+    // 스토리지에 새 자식 추가
+    function addStock() {
+        var newPreset = {
+            name: "프리셋 이름",
+            css: "CSS 코드"
+        };
+        cssStock.push(newPreset);
+        var num = cssStock.length ? cssStock.length - 1 : 0;
+
+        stockW(num);
+    }
+    // css 입력창 생성 함수
+    function stockW (num) {
+        var stockDiv = document.createElement('div');
+        stockDiv.id = 'stockDiv';
+        stockDiv.innerHTML = `
+        <h2>CSS 스크립트</h2>
+        <input type = "text" id = "cssNinput" class = "cssInputStyle" value = "${cssStock[num].name}">
+        <textarea id="cssSinput" class = "cssInputStyle" rows="15" cols="50">${cssStock[num].css}</textarea>
+        <small>주의: 스크립트에서 지정하지 않은 폰트/배경색은 테마 설정에서 변경해야 함.</small>
+        <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button>
+</div>
+        `;
+
+        document.body.appendChild(stockDiv);
+        document.getElementById('cssExit').addEventListener('click', function () {
+            cssStock = JSON.parse(localStorage.getItem('cssStock'));
+            stockDiv.parentNode.removeChild(stockDiv);
+        });
+        document.getElementById('cssSave').addEventListener('click', function () {
+            var nameInput = document.getElementById(`cssNinput`);
+            var codeTextarea = document.getElementById(`cssSinput`);
+
+            // 입력된 값으로 새로운 프리셋 객체를 생성합니다.
+            var newPreset = {
+                name: nameInput.value,
+                css: codeTextarea.value
+            };
+
+            // 해당 위치의 프리셋을 업데이트합니다.
+            cssStock[num] = newPreset;
+
+            // 로컬 스토리지에 업데이트된 cssStock 배열을 저장합니다.
+            uploadStock();
+            printStock();
+            stockSet(num)
+            stockDiv.parentNode.removeChild(stockDiv);
+        });
+
+        document.getElementById('cssDel').addEventListener('click', function () {
+    var confirmDelete = confirm('정말로 삭제하시겠습니까?');
+
+    if (confirmDelete) {
+        // 사용자가 확인을 클릭한 경우에만 삭제 작업을 실행합니다.
+        cssStock.splice(num, 1); // 배열에서 해당 인덱스의 요소 삭제
+        uploadStock();
+        printStock();
+        stockDiv.parentNode.removeChild(stockDiv);
+    }
+        });
+    }
+    // 스크립트 배열 출력 함수
+
+    function printStock() {
+        var cssList = document.getElementById('cssList');
+        cssList.innerHTML = ''; // 기존 내용 초기화
+
+        for (var i = 0; i < cssStock.length; i++) {
+            var preset = cssStock[i];
+            var presetDiv = document.createElement('div');
+            presetDiv.className = 'stockContainer';
+            if (storedIndex === i) presetDiv.style.color = 'var(--Thighlight-color)';
+
+            // 프리셋 설정 버튼 생성
+            var presetName = document.createElement('button');
+            presetName.classList.add('setBtn', 'setBtn-name');
+            presetName.textContent = preset.name;
+            presetName.addEventListener('click', function (index) {
+                return function () {
+                    stockSet(index);
+                };
+            }(i));
+            // 수정 버튼 생성
+            var editButton = document.createElement('button');
+            editButton.classList.add('setBtn', 'setBtn-edit');
+            editButton.textContent = '⚙️';
+            editButton.addEventListener('click', function (index) {
+                return function () {
+                    stockW(index);
+                };
+            }(i));
+            presetDiv.appendChild(presetName);
+            presetDiv.appendChild(editButton);
+            cssList.appendChild(presetDiv);
+        }
+    }
+
+    // 프리셋 세팅 함수
+    function stockSet(index) {
+        storedIndex = index;
+    localStorage.setItem('selectedCssIndex', index);
+    var stockStyleSheet = document.createElement('style');
+    stockStyleSheet.textContent = cssStock[index].css;
+    document.head.appendChild(stockStyleSheet);
+        printStock();
+    }
+    var storedIndex = localStorage.getItem('selectedCssIndex');
+if (storedIndex !== null) {
+    stockSet(parseInt(storedIndex));
+}
+
+    // printStock 함수를 호출하여 초기 프리셋 목록 출력
+    printStock();
+
 
     // 설정 오픈 버튼을 생성합니다.
     var nsSettingsButton = document.createElement('div');
@@ -394,6 +592,7 @@ span.hT {
         localStorage.setItem('colorCode', this.value);
         colorCode = localStorage.getItem('colorCode');
         document.documentElement.style.setProperty('--Thighlight-color', '#' + colorCode);
+        updateTextStyle();
     });
 
     document.getElementById('ns-italic').addEventListener('change', function () {
@@ -429,12 +628,13 @@ span.hT {
     var longCopy = document.createElement('div');
     longCopy.id = 'ns-longCopy';
     longCopy.innerHTML = `
-    <div id="btnLong" class="longCopyBtn">장문</div><div id="btnCopy" class="longCopyBtn">복사</div>
+    <div id="btnLong" class="longCopyBtn">장문</div><div id="btnCopy" class="longCopyBtn">복사</div><div id="btnAuto" class="longCopyBtn">자동</div>
   `;
     tWide.appendChild(longCopy);
     tWide.appendChild(extractedText);
     var btnLong = document.querySelector('#btnLong');
     var btnCopy = document.querySelector('#btnCopy');
+    var btnAuto = document.querySelector('#btnAuto');
     btnLong.addEventListener('click', function () {
         getExtractedText(10000);
     });
@@ -446,6 +646,25 @@ span.hT {
         document.execCommand('copy');
         document.body.removeChild(tempInput);
     });
+
+
+    // 오토 : 개선필요 : 제네레이터 시에만 꽂히는 플래그 찾기
+    var autoOn = false;
+    btnAuto.addEventListener('click', function () {
+        autoOn = !autoOn;
+        if (autoOn) {
+            btnAuto.classList.add('btnOn');
+        } else {
+            btnAuto.classList.remove('btnOn');
+        }
+    });
+    document.addEventListener("transitionend", function(event) {
+        if (!autoOn || !event.target.classList.contains("send")) return;
+        tIconClick();
+    });
+
+
+
 
 })();
 
