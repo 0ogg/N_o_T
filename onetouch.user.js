@@ -624,7 +624,6 @@ if (storedIndex !== null) {
     }
 
     // 롱번역, 복사
-    // 새로운 div 요소를 생성하여 설정창을 나타낼 것입니다.
     var longCopy = document.createElement('div');
     longCopy.id = 'ns-longCopy';
     longCopy.innerHTML = `
