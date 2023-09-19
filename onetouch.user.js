@@ -49,7 +49,7 @@
   right: 0px;
   padding: 10px;
   transition: width 0.2s, height 0.2s;
-    backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
 }
 
 #extracted-text {
@@ -123,23 +123,24 @@ span.hT {
   font-weight: var(--bold-active) !important;
   color: var(--highlight-color) !important;
 }
+
 .cStock {
-    text-align: center;
-    border-radius: 5px;
-    margin: 2px;
-    padding: 5px;
-    gap: 5px;
-    transition: background-color 0.3s;
+  text-align: center;
+  border-radius: 5px;
+  margin: 2px;
+  padding: 5px;
+  gap: 5px;
+  transition: background-color 0.3s;
 }
 
 .cStock:hover {
-    background-color: var(--Thighlight-color);
-    }
+  background-color: var(--Thighlight-color);
+}
 
-    .btnOn {
-    color: var(--loader-color);
-    font-weight: bold;
-    }
+.btnOn {
+  color: var(--loader-color);
+  font-weight: bold;
+}
 
 #stockDiv {
   position: fixed;
@@ -147,7 +148,7 @@ span.hT {
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
-  flex-direction: column; /* 요소들을 세로로 배치합니다 */
+  flex-direction: column;
   z-index: 10003;
   background: var(--Tmain-color);
   width: 80%;
@@ -155,57 +156,65 @@ span.hT {
   padding: 10px;
   gap: 10px;
   backdrop-filter: blur(30px);
-
 }
+
 .stockContainer {
-position: relative;
+  position: relative;
   display: flex;
   flex-direction: row;
   width: 100%;
-    justify-content: space-between;
+  justify-content: space-between;
 }
+
 .cssInputStyle {
-padding: 5px 10px;
+  padding: 5px 10px;
   backdrop-filter: blur(50px);
 }
 
 .setBtn {
-background-color: inherit;
-border: 0px;
-margin: 2px 2px;
-padding: 2px 2px;
+  background-color: inherit;
+  border: 0px;
+  margin: 2px 2px;
+  padding: 2px 2px;
 }
+
 .setBtn:hover {
   backdrop-filter: blur(50px);
 }
-.setBtn-name {
-width: 150px;
-}
-.setBtn-edit {
-right: 0px;
-    position: absolute;
-}
-#cssDel {
-flex: 1;
-width: 15%;
-padding: 10px;
 
+.setBtn-name {
+  width: 150px;
 }
+
+.setBtn-edit {
+  right: 0px;
+  position: absolute;
+}
+
+#cssDel {
+  flex: 1;
+  width: 15%;
+  padding: 10px;
+}
+
 #cssSave {
-flex: 3;
-padding: 10px;
+  flex: 3;
+  padding: 10px;
 }
+
 #cssExit {
-flex: 1;
-width: 15%
-padding: 10px;
+  flex: 1;
+  width: 15%;
+  padding: 10px;
 }
+
 #cssList {
   overflow: scroll;
-  }
+}
+
 
 `;
-//  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
+    //  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
     // style 요소에 CSS 코드를 추가합니다.
     styleElement.textContent = cssCode;
     // style 요소를 문서의 head에 추가합니다.
@@ -487,15 +496,15 @@ padding: 10px;
         });
 
         document.getElementById('cssDel').addEventListener('click', function () {
-    var confirmDelete = confirm('정말로 삭제하시겠습니까?');
+            var confirmDelete = confirm('정말로 삭제하시겠습니까?');
 
-    if (confirmDelete) {
-        // 사용자가 확인을 클릭한 경우에만 삭제 작업을 실행합니다.
-        cssStock.splice(num, 1); // 배열에서 해당 인덱스의 요소 삭제
-        uploadStock();
-        printStock();
-        stockDiv.parentNode.removeChild(stockDiv);
-    }
+            if (confirmDelete) {
+                // 사용자가 확인을 클릭한 경우에만 삭제 작업을 실행합니다.
+                cssStock.splice(num, 1); // 배열에서 해당 인덱스의 요소 삭제
+                uploadStock();
+                printStock();
+                stockDiv.parentNode.removeChild(stockDiv);
+            }
         });
     }
     // 스크립트 배열 출력 함수
@@ -537,16 +546,16 @@ padding: 10px;
     // 프리셋 세팅 함수
     function stockSet(index) {
         storedIndex = index;
-    localStorage.setItem('selectedCssIndex', index);
-    var stockStyleSheet = document.createElement('style');
-    stockStyleSheet.textContent = cssStock[index].css;
-    document.head.appendChild(stockStyleSheet);
+        localStorage.setItem('selectedCssIndex', index);
+        var stockStyleSheet = document.createElement('style');
+        stockStyleSheet.textContent = cssStock[index].css;
+        document.head.appendChild(stockStyleSheet);
         printStock();
     }
     var storedIndex = localStorage.getItem('selectedCssIndex');
-if (storedIndex !== null) {
-    stockSet(parseInt(storedIndex));
-}
+    if (storedIndex !== null) {
+        stockSet(parseInt(storedIndex));
+    }
 
     // printStock 함수를 호출하여 초기 프리셋 목록 출력
     printStock();
