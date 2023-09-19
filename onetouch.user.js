@@ -200,6 +200,10 @@ flex: 1;
 width: 15%
 padding: 10px;
 }
+#cssList {
+  overflow: scroll;
+  }
+
 `;
 //  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
     // style 요소에 CSS 코드를 추가합니다.
