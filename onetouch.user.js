@@ -198,7 +198,7 @@ span.hT {
 }
 
 #cssSave {
-  flex: 3;
+  flex: 2;
   padding: 10px;
 }
 
