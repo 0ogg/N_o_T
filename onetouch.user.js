@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.1
+// @version      2.0
 // @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋)
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -231,7 +231,7 @@ margin-left: 85px;
 
     // 스킨 세팅
     document.documentElement.style.setProperty('--Tmain-color', tMainColor);
-    document.documentElement.style.setProperty('--Thighlight-color', '#' + colorCode);
+    document.documentElement.style.setProperty('--Thighlight-color', colorCode);
 
 
     // 아이콘 생성
@@ -429,8 +429,9 @@ margin-left: 85px;
       <label for="ns-bold">   볼드 </label><input type="checkbox" class="ns-check" id="ns-bold" ${boldActive ? 'checked' : ''}>
       <label for="ns-highlight">   하이라이트 </label><input type="checkbox" class="ns-check" id="ns-highlight" ${highlightActive ? 'checked' : ''}>
     </div>
-    <label for="ns-color-code">하이라이트 색상: #</label>
+    <label for="ns-color-code">하이라이트 색상: </label>
     <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br><br>
+    <small>#을 붙인 칼라코드 입력</small>
     <label>Css 스토리지</label>
     <button id="cssPlus" class="setBtn">+ 추가</button>
     <div id="cssList"></div><br>
@@ -661,7 +662,7 @@ margin-left: 85px;
         };
         // 하이라이트 색
         const textToChange = document.getElementById("textToChange");
-        document.documentElement.style.setProperty('--Thighlight-color', '#' + colorCode);
+        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
     }
 
     // 설정 값 변경 시 로컬 스토리지에 저장
@@ -673,7 +674,7 @@ margin-left: 85px;
     document.getElementById('ns-color-code').addEventListener('input', function () {
         localStorage.setItem('colorCode', this.value);
         colorCode = localStorage.getItem('colorCode');
-        document.documentElement.style.setProperty('--Thighlight-color', '#' + colorCode);
+        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
         updateTextStyle();
     });
 
@@ -698,7 +699,7 @@ margin-left: 85px;
         highlightActive = JSON.parse(localStorage.getItem('ns-highlight'));
         const newItalic = italicActive ? 'italic' : 'normal';
         const newBold = boldActive ? 'bold' : 'normal';
-        const newColor = highlightActive ? '#' + colorCode : 'inherit';
+        const newColor = highlightActive ? colorCode : 'inherit';
 
         document.documentElement.style.setProperty('--italic-active', newItalic);
         document.documentElement.style.setProperty('--bold-active', newBold);
