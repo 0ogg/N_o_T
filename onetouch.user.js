@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.0
+// @version      2.1
 // @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋)
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -60,6 +60,7 @@
 #ns-settings-div {
   /* 설정창 스타일 */
   min-width: 240px;
+  max-length: 85%;
   position: fixed;
   top: 50%;
   left: 50%;
@@ -101,11 +102,6 @@
 #ns-color-code {
   color: var(--Thighlight-color) !important;
 }
-
-#ns-translation-method {
-  background-color: var(--Tmain-color) !important;
-}
-
 #ns-longCopy {
   top: 0;
   left: 0;
@@ -198,7 +194,7 @@ span.hT {
 }
 
 #cssSave {
-  flex: 2;
+  flex: 3;
   padding: 10px;
 }
 
@@ -210,9 +206,12 @@ span.hT {
 
 #cssList {
   overflow: scroll;
+  max-height: 300px;
 }
 
-
+#setExit {
+margin-left: 85px;
+}
 `;
     //  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
     // style 요소에 CSS 코드를 추가합니다.
@@ -434,7 +433,8 @@ span.hT {
     <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br><br>
     <label>Css 스토리지</label>
     <button id="cssPlus" class="setBtn">+ 추가</button>
-    <div id="cssList"></div>
+    <div id="cssList"></div><br>
+    <button id = "stockBup" class="setBtn">📥</button><button id = "stockImport" class="setBtn">📤</button><button id = "setExit" class="setBtn">창닫기</button>
   `;
     // 생성한 설정창을 문서의 body에 추가합니다.
     document.body.appendChild(nsSettingsDiv);
@@ -491,7 +491,7 @@ span.hT {
             // 로컬 스토리지에 업데이트된 cssStock 배열을 저장합니다.
             uploadStock();
             printStock();
-            stockSet(num)
+            stockSet(num);
             stockDiv.parentNode.removeChild(stockDiv);
         });
 
@@ -545,26 +545,95 @@ span.hT {
 
     // 프리셋 세팅 함수
     function stockSet(index) {
+        // 첫 번째로, cssStock 배열의 존재 여부와 index 범위를 확인합니다. 조건문 문법 맞는지 확인!!!!!
+        if (isNaN(index) || !cssStock || !Array.isArray(cssStock) || index < 0 || index >= cssStock.length) {
+            index = 0;
+            if (!Array.isArray(cssStock)) cssStock = [];
+            cssStock[index] = { name: '프리셋 이름', css: 'css 코드' };
+        }
+
+
+        // storedIndex 변수는 전역으로 선언되어 있어서 주의가 필요합니다.
         storedIndex = index;
         localStorage.setItem('selectedCssIndex', index);
+
         var stockStyleSheet = document.createElement('style');
+
+        // 수정: cssStock[index]로 수정합니다.
         stockStyleSheet.textContent = cssStock[index].css;
         document.head.appendChild(stockStyleSheet);
+
         printStock();
     }
+
     var storedIndex = localStorage.getItem('selectedCssIndex');
     if (storedIndex !== null) {
         stockSet(parseInt(storedIndex));
     }
-
     // printStock 함수를 호출하여 초기 프리셋 목록 출력
     printStock();
+
+
+    // 프리셋 전체 백업
+    document.getElementById('stockBup').addEventListener('click', function() {
+
+        const cssStockText = JSON.stringify(cssStock, null, 2);
+
+        const textarea = document.createElement('textarea');
+        textarea.value = cssStockText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    });
+    // 전체 프리셋 임포트
+    document.getElementById('stockImport').addEventListener('click', function() {
+        var stockDiv = document.createElement('div');
+        stockDiv.id = 'stockDiv';
+        stockDiv.innerHTML = `
+        <h2>백업 프리셋 저장</h2>
+        <textarea id="cssSinput" class = "cssInputStyle" rows="15" cols="50"></textarea>
+        <small>백업으로 복사된 내용을 사용할 기기에서 붙여넣기</small>
+        <div class = "stockContainer"><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button>
+</div>
+        `;
+
+        document.body.appendChild(stockDiv);
+        //창닫기 버튼
+        document.getElementById('cssExit').addEventListener('click', function () {
+            stockDiv.parentNode.removeChild(stockDiv);
+        });
+        //백업 임포트 버튼
+        document.getElementById('cssSave').addEventListener('click', function () {
+            var confirmDelete = confirm('확인을 누르면 현재 저장되어 있는 내용이 지금 업데이트한 내용으로 덮어쓰기 됩니다. ㅇㅋ?');
+
+            if (confirmDelete) {
+                var codeTextarea = document.getElementById(`cssSinput`).value; // 텍스트 내용을 추출합니다.
+
+                try {
+                    const extractedData = JSON.parse(codeTextarea);
+                    cssStock = extractedData;
+                    uploadStock();
+                    printStock();
+                    stockSet();
+                    stockDiv.parentNode.removeChild(stockDiv);
+                } catch (error) {
+                    // JSON 파싱 오류 처리
+                    console.error('JSON 파싱 오류:', error);
+                    // 오류 처리 로직을 추가하세요.
+                }
+            }
+        })
+    })
+    document.getElementById('setExit').addEventListener('click', function () {
+        nsSettingsDiv.style.display = 'none';
+    });
+
 
 
     // 설정 오픈 버튼을 생성합니다.
     var nsSettingsButton = document.createElement('div');
     nsSettingsButton.id = 'ns-settings-button';
-
     // 설정 오픈 버튼을 문서의 body에 추가합니다.
     document.body.appendChild(nsSettingsButton);
 
