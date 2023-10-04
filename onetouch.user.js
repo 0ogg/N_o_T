@@ -430,8 +430,8 @@ margin-left: 85px;
       <label for="ns-highlight">   하이라이트 </label><input type="checkbox" class="ns-check" id="ns-highlight" ${highlightActive ? 'checked' : ''}>
     </div>
     <label for="ns-color-code">하이라이트 색상: </label>
-    <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br><br>
-    <small>#을 붙인 칼라코드 입력</small>
+    <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br>
+    <small>#을 붙인 칼라코드 입력</small><br>
     <label>Css 스토리지</label>
     <button id="cssPlus" class="setBtn">+ 추가</button>
     <div id="cssList"></div><br>
