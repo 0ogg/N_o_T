@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.0
-// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 현재 컨텐츠 추가중
+// @version      2.1
+// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 익명 변환 통합
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
 // @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
@@ -20,6 +20,8 @@
   --italic-active: normal;
   --bold-active: normal;
   --highlight-color: inherit;
+  --tMini-url: none;
+  --tMini-size: 30px;
 }
 
 #t-mini {
@@ -27,9 +29,9 @@
   cursor: pointer;
   position: absolute;
   z-index: 9999;
-  width: 30px;
-  height: 30px;
-  background: repeating-linear-gradient(-45deg, white, white 2px, RoyalBlue 2px, RoyalBlue 4px);
+  width: var(--tMini-size);
+  height: var(--tMini-size);
+  background: var(--tMini-url);
   border-radius: 50%;
   bottom: 20%;
   right: 15px;
@@ -59,8 +61,8 @@
 
 #ns-settings-div {
   /* 설정창 스타일 */
-  min-width: 240px;
-  max-length: 85%;
+  width: 240px;
+  height: 450px;
   position: fixed;
   top: 50%;
   left: 50%;
@@ -96,6 +98,7 @@
 .ns-input {
   width: 80px;
   padding: 2px;
+  margin: 1px;
   backdrop-filter: blur(50px);
 }
 
@@ -206,14 +209,40 @@ span.hT {
 
 #cssList {
   overflow: scroll;
-  max-height: 300px;
+  max-height: 200px;
 }
 
 #setExit {
-margin-left: 85px;
+width: 100%;
+  margin: 0 auto;
+  text-align: center;
 }
+#setInMenu {
+    display: flex;
+margin: 5px 0px;
+
+}
+#setInDiv {
+height: 310px;
+}
+#comebackIcon {
+width: 70%;
+padding: 5px;
+margin: 5px auto;
+    border: 1px solid white;
+    text-align: center;
+    }
+    .subBtn {
+  background-color: var(--Tmain-color);
+    display: inline;
+    padding: 5px 10px;
+    border-radius: 5px 5px 0 0;
+    border: 1px solid gray;
+    border-bottom: none;
+    font-weight: bold;
+    }
+
 `;
-    //  <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button></div>
     // style 요소에 CSS 코드를 추가합니다.
     styleElement.textContent = cssCode;
     // style 요소를 문서의 head에 추가합니다.
@@ -225,8 +254,24 @@ margin-left: 85px;
     var italicActive = JSON.parse(localStorage.getItem('ns-italic')) || false;
     var boldActive = JSON.parse(localStorage.getItem('ns-bold')) || false;
     var highlightActive = JSON.parse(localStorage.getItem('ns-highlight')) || false;
-    var colorCode = localStorage.getItem('colorCode') || 'ffffff';
+    var colorCode = localStorage.getItem('colorCode') || 'royalblue';
     var tMainColor = localStorage.getItem('tMainColor');
+    var nsIconSize = localStorage.getItem('ns-icon-size') || '30';
+    var nsIconUrl = localStorage.getItem('ns-icon-url') || 'url 입력';
+    nsIconLoad();
+    function nsIconLoad() {
+        document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
+        var img = new Image();
+        img.onload = function () {
+            document.documentElement.style.setProperty('--tMini-url', 'url(' + nsIconUrl + ')');
+        };
+        img.onerror = function () {
+            var gradation = 'repeating-linear-gradient(-45deg, white, white 2px, RoyalBlue 2px, RoyalBlue 4px)';
+            document.documentElement.style.setProperty('--tMini-url', gradation);
+        };
+        img.src = nsIconUrl;
+    }
+
 
 
     // 스킨 세팅
@@ -414,13 +459,61 @@ margin-left: 85px;
 
 
 
-    // 설정창
+    // 설정창 ⚙️
     var nsSettingsDiv = document.createElement('div');
     nsSettingsDiv.id = 'ns-settings-div';
 
     // 설정창의 내용을 구성합니다.
     nsSettingsDiv.innerHTML = `
     <h2>설정</h2>
+    <div id="setInMenu"></div>
+    <div id="setInDiv"></div>
+    <button id = "setExit" class="setBtn">창닫기</button>
+  `;
+    // 생성한 설정창을 문서의 body에 추가합니다.
+    document.body.appendChild(nsSettingsDiv);
+
+
+    // 설정 오픈 버튼을 생성합니다. ⛔️ 설정창 토글 버튼 비활성화
+    //⛔️    var nsSettingsButton = document.createElement('div');
+    //⛔️    nsSettingsButton.id = 'ns-settings-button';
+    // 설정 오픈 버튼을 문서의 body에 추가합니다.
+    //⛔️    document.body.appendChild(nsSettingsButton);
+
+    // 설정창 열기/닫기를 처리하는 함수
+    function toggleSettings() {
+        if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
+            tColorEx();
+            nsSettingsDiv.style.display = 'block';
+        } else {
+            nsSettingsDiv.style.display = 'none';
+        }
+    }
+
+    // 설정 오픈 버튼의 클릭 이벤트 핸들러 등록
+    //⛔️    nsSettingsButton.addEventListener('click', toggleSettings);
+
+    // 설정창 스타일 색추출 함수
+    function tColorEx () {
+        // 설정창 배경색
+        var infobarElement = document.querySelector('.menubar');
+        if (infobarElement) {
+            tMainColor = window.getComputedStyle(infobarElement).backgroundColor;
+            document.documentElement.style.setProperty('--Tmain-color', tMainColor);
+            localStorage.setItem('tMainColor', tMainColor);
+        };
+        // 하이라이트 색
+        const textToChange = document.getElementById("textToChange");
+        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
+    }
+
+    //설정창 닫기
+    document.getElementById('setExit').addEventListener('click', function () {
+        nsSettingsDiv.style.display = 'none';
+    });
+
+    // 설정창 세부 메뉴
+    var settingList = [['기본',`
     <label for="ns-text-extraction">텍스트 추출분량:</label>
     <input type="number" class="ns-input" id="ns-text-extraction" value="${textExtraction}"><br><br>
     <label for="ns-color-code">대사강조: </label>
@@ -428,19 +521,174 @@ margin-left: 85px;
       <label for="ns-italic">이탤릭 </label><input type="checkbox" class="ns-check" id="ns-italic" ${italicActive ? 'checked' : ''}>
       <label for="ns-bold">   볼드 </label><input type="checkbox" class="ns-check" id="ns-bold" ${boldActive ? 'checked' : ''}>
       <label for="ns-highlight">   하이라이트 </label><input type="checkbox" class="ns-check" id="ns-highlight" ${highlightActive ? 'checked' : ''}>
-    </div>
+    </div><br>
     <label for="ns-color-code">하이라이트 색상: </label>
     <input type="text" class="ns-input" id="ns-color-code" value="${colorCode}"><br>
-    <small>#을 붙인 칼라코드 입력</small><br>
-    <label>Css 스토리지</label>
+    <small>칼라코드는 #을 함께 입력</small><br><br>
+    <label>아이콘 사이즈: </label>
+    <input type="number" class="ns-input" id="ns-icon-size" value="${nsIconSize}">px<br>
+    <input type="text" class="ns-input" style="width: 100%" id="ns-icon-url" value="${nsIconUrl}"><br>
+    <div id = "comebackIcon">가출 아이콘 찾기</div>`],
+                       ['커스텀',`
+    <small>커스텀 css를 프리셋으로 저장</small><br>
     <button id="cssPlus" class="setBtn">+ 추가</button>
-    <div id="cssList"></div><br>
-    <button id = "stockBup" class="setBtn">📥</button><button id = "stockImport" class="setBtn">📤</button><button id = "setExit" class="setBtn">창닫기</button>
-  `;
-    // 생성한 설정창을 문서의 body에 추가합니다.
-    document.body.appendChild(nsSettingsDiv);
+    <div id="cssList"></div>
+    <button id = "stockBup" class="setBtn">📥백업 복사</button> <button id = "stockImport" class="setBtn">📤백업 등록</button>
+    `],
+                       ['변환',`
+                       <h3>변환</h3>
+    <div>
+        <div style="padding-bottom: 10px;">
+            <div style="padding-bottom: 10px;">
+                <label for="find-text-input1">단어1: </label><br>
+                <input type="text" id="find-text-input1" class="ns-input" value="Jane" />
+                <label for="replace-text-input1"> → </label>
+                <input type="text" id="replace-text-input1" class="ns-input" value="깡캐" />
+            </div>
+            <div>
+                <label for="find-text-input2">단어2: </label><br>
+                <input type="text" id="find-text-input2" class="ns-input" value="John" />
+                <label for="replace-text-input2"> → </label>
+                <input type="text" id="replace-text-input2" class="ns-input" value="깡통" />
+            </div>
+        </div>
+        <button id="replace-button" class="setBtn">변환</button><br>
+    </div>
+                      `]];
+    var setInDiv = document.querySelector('#setInDiv');
+    var setInMenu = document.querySelector('#setInMenu');
+    var selectSetMenu = 0;
 
-    // css 스토리지
+    // 설정 메뉴 탭 출력
+    var nonFilter = 'sepia(0.1) brightness(0.95)';
+    for (var i = 0; i < settingList.length; i++) {
+        var subDiv = document.createElement('div');
+        subDiv.id = 'setT' + i;
+        subDiv.innerHTML = settingList[i][1];
+        // 버튼 생성
+        var subBtn = document.createElement('div');
+        subBtn.className = 'subBtn';
+        subBtn.id = 'setB' + i;
+        subBtn.innerText = settingList[i][0];
+        subBtn.addEventListener('click', function (index) {
+            return function () {
+                changeSet(index);
+            };
+        }(i));
+        if(i != selectSetMenu) {
+            subDiv.style.display = 'none';
+            subBtn.style.filter = nonFilter;
+            subBtn.style.fontWeight = 'normal';
+        };
+        setInMenu.appendChild(subBtn);
+        setInDiv.appendChild(subDiv);
+    }
+
+    function changeSet(index = 0){
+        selectSetMenu = index;
+        for (var i = 0; i < settingList.length; i++) {
+            var btn = document.querySelector('#setB' + i);
+            btn.style.filter = nonFilter;
+            btn.style.fontWeight = 'normal';
+            var tab = document.querySelector('#setT' + i);
+            tab.style.display = 'none';
+            if (selectSetMenu == i) {
+                btn.style.filter = 'none';
+                btn.style.fontWeight = 'bold';
+                tab.style.display = 'block';
+            }
+
+        }
+    }
+    var comebackIcon = document.getElementById('comebackIcon');
+    comebackIcon.addEventListener('click', function() {
+        tMini.style.right = 10 + "%";
+        tMini.style.bottom = 10 + "%";
+    });
+
+
+
+    // 설정 메뉴(0️⃣) 기본 설정
+
+
+    // 설정 값 변경 시 로컬 스토리지에 저장
+    document.getElementById('ns-text-extraction').addEventListener('input', function () {
+        localStorage.setItem('textExtraction', this.value);
+        textExtraction = localStorage.getItem('textExtraction');
+    });
+
+
+    document.getElementById('ns-italic').addEventListener('change', function () {
+        localStorage.setItem('ns-italic', this.checked);
+        updateTextStyle();
+    });
+
+    document.getElementById('ns-bold').addEventListener('change', function () {
+        localStorage.setItem('ns-bold', this.checked);
+        updateTextStyle();
+    });
+
+    document.getElementById('ns-highlight').addEventListener('change', function () {
+        localStorage.setItem('ns-highlight', this.checked);
+        updateTextStyle();
+    });
+
+    document.getElementById('ns-color-code').addEventListener('input', function () {
+        localStorage.setItem('colorCode', this.value);
+        colorCode = localStorage.getItem('colorCode');
+        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
+        updateTextStyle();
+    });
+    document.getElementById('ns-icon-size').addEventListener('input', function () {
+        if (this.value > 20 && this.vlaue < 500) {
+            localStorage.setItem('ns-icon-size', this.value);
+            nsIconSize = this.value;
+            document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
+        }
+    });
+    document.getElementById('ns-icon-url').addEventListener('input', function () {
+        // 입력된 URL 가져오기
+        var imageUrl = this.value;
+
+        // 이미지 객체 생성
+        var img = new Image();
+
+        // 이미지 로드에 성공했을 때
+        img.onload = function () {
+            localStorage.setItem('ns-icon-url', imageUrl);
+            nsIconUrl = 'url(' + imageUrl + ')';
+            document.documentElement.style.setProperty('--tMini-url', nsIconUrl);
+        };
+
+        // 이미지 로드에 실패했을 때
+        img.onerror = function () {
+            localStorage.setItem('ns-icon-url', imageUrl);
+            var gradation = 'repeating-linear-gradient(-45deg, white, white 2px, RoyalBlue 2px, RoyalBlue 4px)';
+            document.documentElement.style.setProperty('--tMini-url', gradation);
+        };
+
+        // 이미지 URL 설정
+        img.src = imageUrl;
+    });
+
+    function updateTextStyle() {
+
+        italicActive = JSON.parse(localStorage.getItem('ns-italic'));
+        boldActive = JSON.parse(localStorage.getItem('ns-bold'));
+        highlightActive = JSON.parse(localStorage.getItem('ns-highlight'));
+        const newItalic = italicActive ? 'italic' : 'normal';
+        const newBold = boldActive ? 'bold' : 'normal';
+        const newColor = highlightActive ? colorCode : 'inherit';
+
+        document.documentElement.style.setProperty('--italic-active', newItalic);
+        document.documentElement.style.setProperty('--bold-active', newBold);
+        document.documentElement.style.setProperty('--highlight-color', newColor);
+    }
+
+
+
+    // 설정메뉴 (1️⃣) css 스토리지
+
     var cssStock = JSON.parse(localStorage.getItem('cssStock')) || [];
     // 스토리지 저장 함수
     function uploadStock() {
@@ -463,10 +711,8 @@ margin-left: 85px;
         var stockDiv = document.createElement('div');
         stockDiv.id = 'stockDiv';
         stockDiv.innerHTML = `
-        <h2>CSS 스크립트</h2>
         <input type = "text" id = "cssNinput" class = "cssInputStyle" value = "${cssStock[num].name}">
         <textarea id="cssSinput" class = "cssInputStyle" rows="15" cols="50">${cssStock[num].css}</textarea>
-        <small>주의: 스크립트에서 지정하지 않은 폰트/배경색은 테마 설정에서 변경해야 함.</small>
         <div class = "stockContainer"><button id="cssDel" class="setBtn">삭제</button><button id="cssSave" class="setBtn">저장</button><button id="cssExit" class="setBtn">창닫기</button>
 </div>
         `;
@@ -552,6 +798,11 @@ margin-left: 85px;
             if (!Array.isArray(cssStock)) cssStock = [];
             cssStock[index] = { name: '프리셋 이름', css: 'css 코드' };
         }
+        //기존 스타일 시트 삭제
+        var styleElement = document.getElementById('customCss');
+        if (styleElement) {
+            styleElement.remove();
+        }
 
 
         // storedIndex 변수는 전역으로 선언되어 있어서 주의가 필요합니다.
@@ -559,7 +810,7 @@ margin-left: 85px;
         localStorage.setItem('selectedCssIndex', index);
 
         var stockStyleSheet = document.createElement('style');
-
+        stockStyleSheet.id = 'customCss';
         // 수정: cssStock[index]로 수정합니다.
         stockStyleSheet.textContent = cssStock[index].css;
         document.head.appendChild(stockStyleSheet);
@@ -626,100 +877,29 @@ margin-left: 85px;
             }
         })
     })
-    document.getElementById('setExit').addEventListener('click', function () {
-        nsSettingsDiv.style.display = 'none';
-    });
 
 
 
-    // 설정 오픈 버튼을 생성합니다.
-    var nsSettingsButton = document.createElement('div');
-    nsSettingsButton.id = 'ns-settings-button';
-    // 설정 오픈 버튼을 문서의 body에 추가합니다.
-    document.body.appendChild(nsSettingsButton);
-
-    // 설정창 열기/닫기를 처리하는 함수
-    function toggleSettings() {
-        if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
-            tColorEx();
-            nsSettingsDiv.style.display = 'block';
-        } else {
-            nsSettingsDiv.style.display = 'none';
-        }
-    }
-
-    // 설정 오픈 버튼의 클릭 이벤트 핸들러 등록
-    nsSettingsButton.addEventListener('click', toggleSettings);
-
-    // 색추출 함수
-    function tColorEx () {
-        // 설정창 배경색
-        var infobarElement = document.querySelector('.menubar');
-        if (infobarElement) {
-            tMainColor = window.getComputedStyle(infobarElement).backgroundColor;
-            document.documentElement.style.setProperty('--Tmain-color', tMainColor);
-            localStorage.setItem('tMainColor', tMainColor);
-        };
-        // 하이라이트 색
-        const textToChange = document.getElementById("textToChange");
-        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
-    }
-
-    // 설정 값 변경 시 로컬 스토리지에 저장
-    document.getElementById('ns-text-extraction').addEventListener('input', function () {
-        localStorage.setItem('textExtraction', this.value);
-        textExtraction = localStorage.getItem('textExtraction');
-    });
-
-    document.getElementById('ns-color-code').addEventListener('input', function () {
-        localStorage.setItem('colorCode', this.value);
-        colorCode = localStorage.getItem('colorCode');
-        document.documentElement.style.setProperty('--Thighlight-color', colorCode);
-        updateTextStyle();
-    });
-
-    document.getElementById('ns-italic').addEventListener('change', function () {
-        localStorage.setItem('ns-italic', this.checked);
-        updateTextStyle();
-    });
-
-    document.getElementById('ns-bold').addEventListener('change', function () {
-        localStorage.setItem('ns-bold', this.checked);
-        updateTextStyle();
-    });
-
-    document.getElementById('ns-highlight').addEventListener('change', function () {
-        localStorage.setItem('ns-highlight', this.checked);
-        updateTextStyle();
-    });
-    function updateTextStyle() {
-
-        italicActive = JSON.parse(localStorage.getItem('ns-italic'));
-        boldActive = JSON.parse(localStorage.getItem('ns-bold'));
-        highlightActive = JSON.parse(localStorage.getItem('ns-highlight'));
-        const newItalic = italicActive ? 'italic' : 'normal';
-        const newBold = boldActive ? 'bold' : 'normal';
-        const newColor = highlightActive ? colorCode : 'inherit';
-
-        document.documentElement.style.setProperty('--italic-active', newItalic);
-        document.documentElement.style.setProperty('--bold-active', newBold);
-        document.documentElement.style.setProperty('--highlight-color', newColor);
-    }
-
-    // 롱번역, 복사
+    // 번역창
     var longCopy = document.createElement('div');
     longCopy.id = 'ns-longCopy';
     longCopy.innerHTML = `
-    <div id="btnLong" class="longCopyBtn">장문</div><div id="btnCopy" class="longCopyBtn">복사</div><div id="btnAuto" class="longCopyBtn">자동</div>
+    <div id="btnLong" class="longCopyBtn">장문</div>
+    <div id="btnCopy" class="longCopyBtn">복사</div>
+    <div id="btnAuto" class="longCopyBtn">자동</div>
+    <div id="btnSettings" class="longCopyBtn">설정</div>
   `;
     tWide.appendChild(longCopy);
     tWide.appendChild(extractedText);
+
+    // 장문 추출
     var btnLong = document.querySelector('#btnLong');
-    var btnCopy = document.querySelector('#btnCopy');
-    var btnAuto = document.querySelector('#btnAuto');
     btnLong.addEventListener('click', function () {
         getExtractedText(10000);
     });
+
+    //복사
+    var btnCopy = document.querySelector('#btnCopy');
     btnCopy.addEventListener('click', function () {
         var tempInput = document.createElement('textarea');
         var copyText = extractedText.innerHTML;
@@ -734,6 +914,7 @@ margin-left: 85px;
 
 
     // 오토 : 개선필요 : 제네레이터 시에만 꽂히는 플래그 찾기
+    var btnAuto = document.querySelector('#btnAuto');
     var autoOn = false;
     btnAuto.addEventListener('click', function () {
         autoOn = !autoOn;
@@ -748,8 +929,22 @@ margin-left: 85px;
         tIconClick();
     });
 
-    // 추가중 찾아 바꾸기, 설정 탭 분리, 설정 아이콘 위치, 매크로
+    // 설정
+    var btnSettings = document.querySelector('#btnSettings');
+    btnSettings.addEventListener('click', toggleSettings);
+    // 찾아서 수정
+    const replaceButton = document.querySelector('#replace-button');
 
+    replaceButton.addEventListener('click', () => {
+        const findTextInput1 = '\\b' + document.querySelector('#find-text-input1').value + '\\b';
+        const replaceTextInput1 = document.querySelector('#replace-text-input1').value;
+        const findTextInput2 = '\\b' + document.querySelector('#find-text-input2').value + '\\b';
+        const replaceTextInput2 = document.querySelector('#replace-text-input2').value;
 
+        var source = extractedText.innerHTML;
+        var newText = source.replaceAll(new RegExp(findTextInput1, 'g'), replaceTextInput1);
+        newText = newText.replaceAll(new RegExp(findTextInput2, 'g'), replaceTextInput2);
+        extractedText.innerHTML = newText;
+    });
 
 })();
