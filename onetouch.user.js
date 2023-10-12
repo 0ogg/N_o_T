@@ -15,232 +15,237 @@
     // CSS 코드를 작성합니다.
     var cssCode = `
 :root {
-  --Tmain-color: azure;
-  --Thighlight-color: inherit;
-  --italic-active: normal;
-  --bold-active: normal;
-  --highlight-color: inherit;
-  --tMini-url: none;
-  --tMini-size: 30px;
+    --Tmain-color: azure;
+    --Thighlight-color: inherit;
+    --italic-active: normal;
+    --bold-active: normal;
+    --highlight-color: inherit;
+    --tMini-url: none;
+    --tMini-size: 30px;
 }
 
 #t-mini {
-  display: flex;
-  cursor: pointer;
-  position: absolute;
-  z-index: 9999;
-  width: var(--tMini-size);
-  height: var(--tMini-size);
-  background: var(--tMini-url);
-  border-radius: 50%;
-  bottom: 20%;
-  right: 15px;
+    display: flex;
+    cursor: pointer;
+    position: absolute;
+    z-index: 9999;
+    width: var(--tMini-size);
+    height: var(--tMini-size);
+    background: var(--tMini-url);
+    border-radius: 50%;
+    bottom: 20%;
+    right: 15px;
+    background-size: cover;
 }
 
 #t-wide {
-  display: none;
-  flex-direction: column;
-  cursor: default;
-  position: absolute;
-  z-index: 9998;
-  width: 350px;
-  max-width: 95%;
-  background: var(--Tmain-color);
-  height: 100%;
-  bottom: 0px;
-  right: 0px;
-  padding: 10px;
-  transition: width 0.2s, height 0.2s;
-  backdrop-filter: blur(30px);
+    display: none;
+    flex-direction: column;
+    cursor: default;
+    position: absolute;
+    z-index: 9998;
+    width: 350px;
+    max-width: 95%;
+    background: var(--Tmain-color);
+    height: 100%;
+    bottom: 0px;
+    right: 0px;
+    padding: 10px;
+    transition: width 0.2s, height 0.2s;
+    backdrop-filter: blur(30px);
 }
 
 #extracted-text {
-  min-height: 90%;
-  overflow: scroll;
+    min-height: 90%;
+    overflow: scroll;
 }
 
 #ns-settings-div {
-  /* 설정창 스타일 */
-  width: 240px;
-  height: 450px;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: var(--Tmain-color);
-  padding: 20px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  display: none;
-  z-index: 9999;
-  backdrop-filter: blur(30px) !important;
+    /* 설정창 스타일 */
+    width: 240px;
+    height: 450px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--Tmain-color);
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    display: none;
+    z-index: 9999;
+    backdrop-filter: blur(30px) !important;
 }
 
 #ns-settings-button {
-  /* 설정 오픈 버튼 스타일 */
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  z-index: 9999;
-  background-image: url('https://novelai.net/_next/static/media/settings.37ac2cdf.svg');
-  background-size: cover;
-  filter: invert(50%);
+    /* 설정 오픈 버튼 스타일 */
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    z-index: 9999;
+    background-image: url('https://novelai.net/_next/static/media/settings.37ac2cdf.svg');
+    background-size: cover;
+    filter: invert(50%);
 }
 
 .ns-check {
-  vertical-align: middle;
-  display: inline-block;
-  width: 13px;
+    vertical-align: middle;
+    display: inline-block;
+    width: 13px;
 }
 
 .ns-input {
-  width: 80px;
-  padding: 2px;
-  margin: 1px;
-  backdrop-filter: blur(50px);
+    width: 80px;
+    padding: 2px;
+    margin: 1px;
+    backdrop-filter: blur(50px);
 }
 
 #ns-color-code {
-  color: var(--Thighlight-color) !important;
+    color: var(--Thighlight-color) !important;
 }
+
 #ns-longCopy {
-  top: 0;
-  left: 0;
-  display: flex;
-  gap: 10px;
+    top: 0;
+    left: 0;
+    display: flex;
+    gap: 10px;
 }
 
 .longCopyBtn {
-  width: 50px;
-  padding: 5px;
+    width: 50px;
+    padding: 5px;
 }
 
 span.hT {
-  font-style: var(--italic-active) !important;
-  font-weight: var(--bold-active) !important;
-  color: var(--highlight-color) !important;
+    font-style: var(--italic-active) !important;
+    font-weight: var(--bold-active) !important;
+    color: var(--highlight-color) !important;
 }
 
 .cStock {
-  text-align: center;
-  border-radius: 5px;
-  margin: 2px;
-  padding: 5px;
-  gap: 5px;
-  transition: background-color 0.3s;
+    text-align: center;
+    border-radius: 5px;
+    margin: 2px;
+    padding: 5px;
+    gap: 5px;
+    transition: background-color 0.3s;
 }
 
 .cStock:hover {
-  background-color: var(--Thighlight-color);
+    background-color: var(--Thighlight-color);
 }
 
 .btnOn {
-  color: var(--loader-color);
-  font-weight: bold;
+    color: var(--loader-color);
+    font-weight: bold;
 }
 
 #stockDiv {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  z-index: 10003;
-  background: var(--Tmain-color);
-  width: 80%;
-  max-width: 500px;
-  padding: 10px;
-  gap: 10px;
-  backdrop-filter: blur(30px);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    z-index: 10003;
+    background: var(--Tmain-color);
+    width: 80%;
+    max-width: 500px;
+    padding: 10px;
+    gap: 10px;
+    backdrop-filter: blur(30px);
 }
 
 .stockContainer {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  justify-content: space-between;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
 }
 
 .cssInputStyle {
-  padding: 5px 10px;
-  backdrop-filter: blur(50px);
+    padding: 5px 10px;
+    backdrop-filter: blur(50px);
 }
 
 .setBtn {
-  background-color: inherit;
-  border: 0px;
-  margin: 2px 2px;
-  padding: 2px 2px;
+    background-color: inherit;
+    border: 0px;
+    margin: 2px 2px;
+    padding: 2px 2px;
 }
 
 .setBtn:hover {
-  backdrop-filter: blur(50px);
+    backdrop-filter: blur(50px);
 }
 
 .setBtn-name {
-  width: 150px;
+    width: 150px;
 }
 
 .setBtn-edit {
-  right: 0px;
-  position: absolute;
+    right: 0px;
+    position: absolute;
 }
 
 #cssDel {
-  flex: 1;
-  width: 15%;
-  padding: 10px;
+    flex: 1;
+    width: 15%;
+    padding: 10px;
 }
 
 #cssSave {
-  flex: 3;
-  padding: 10px;
+    flex: 3;
+    padding: 10px;
 }
 
 #cssExit {
-  flex: 1;
-  width: 15%;
-  padding: 10px;
+    flex: 1;
+    width: 15%;
+    padding: 10px;
 }
 
 #cssList {
-  overflow: scroll;
-  max-height: 200px;
+    overflow: scroll;
+    max-height: 200px;
 }
 
 #setExit {
-width: 100%;
-  margin: 0 auto;
-  text-align: center;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
 }
+
 #setInMenu {
     display: flex;
-margin: 5px 0px;
+    margin: 5px 0px;
+}
 
-}
 #setInDiv {
-height: 310px;
+    height: 310px;
 }
+
 #comebackIcon {
-width: 70%;
-padding: 5px;
-margin: 5px auto;
+    width: 70%;
+    padding: 5px;
+    margin: 5px auto;
     border: 1px solid white;
     text-align: center;
-    }
-    .subBtn {
-  background-color: var(--Tmain-color);
+}
+
+.subBtn {
+    background-color: var(--Tmain-color);
     display: inline;
     padding: 5px 10px;
     border-radius: 5px 5px 0 0;
     border: 1px solid gray;
     border-bottom: none;
     font-weight: bold;
-    }
+}
 
 `;
     // style 요소에 CSS 코드를 추가합니다.
