@@ -2,7 +2,7 @@
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
 // @version      2.0
-// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋)
+// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 현재 컨텐츠 추가중
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
 // @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
@@ -722,7 +722,10 @@ margin-left: 85px;
     });
     btnCopy.addEventListener('click', function () {
         var tempInput = document.createElement('textarea');
-        tempInput.value = extractedText.textContent;
+        var copyText = extractedText.innerHTML;
+        copyText = copyText.replace(/<br>/g, '\n');
+        copyText = copyText.replace(/<[^>]*>/g, "");
+        tempInput.value = copyText;
         document.body.appendChild(tempInput);
         tempInput.select();
         document.execCommand('copy');
@@ -745,8 +748,8 @@ margin-left: 85px;
         tIconClick();
     });
 
+    // 추가중 찾아 바꾸기, 설정 탭 분리, 설정 아이콘 위치, 매크로
 
 
 
 })();
-
