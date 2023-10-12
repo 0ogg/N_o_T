@@ -221,7 +221,6 @@ span.hT {
 }
 
 #setInMenu {
-    display: flex;
     margin: 5px 0px;
 }
 
@@ -239,12 +238,17 @@ span.hT {
 
 .subBtn {
     background-color: var(--Tmain-color);
-    display: inline;
-    padding: 5px 10px;
+    display: inline-block;
+    min-width: 3em;
+    height: 1.8em;
     border-radius: 5px 5px 0 0;
+    padding: 5px;
     border: 1px solid gray;
     border-bottom: none;
     font-weight: bold;
+    line-height: 1;
+    text-align: center;
+    place-items: center;
 }
 
 `;
@@ -534,7 +538,7 @@ span.hT {
     <input type="number" class="ns-input" id="ns-icon-size" value="${nsIconSize}">px<br>
     <input type="text" class="ns-input" style="width: 100%" id="ns-icon-url" value="${nsIconUrl}"><br>
     <div id = "comebackIcon">가출 아이콘 찾기</div>`],
-                       ['커스텀',`
+                       ['CSS',`
     <small>커스텀 css를 프리셋으로 저장</small><br>
     <button id="cssPlus" class="setBtn">+ 추가</button>
     <div id="cssList"></div>
@@ -559,7 +563,8 @@ span.hT {
         </div>
         <button id="replace-button" class="setBtn">변환</button><br>
     </div>
-                      `]];
+                      `]
+                      ];
     var setInDiv = document.querySelector('#setInDiv');
     var setInMenu = document.querySelector('#setInMenu');
     var selectSetMenu = 0;
@@ -645,7 +650,7 @@ span.hT {
         updateTextStyle();
     });
     document.getElementById('ns-icon-size').addEventListener('input', function () {
-        if (this.value > 20 && this.vlaue < 500) {
+        if (this.value > 20) {
             localStorage.setItem('ns-icon-size', this.value);
             nsIconSize = this.value;
             document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
