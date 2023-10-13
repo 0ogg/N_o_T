@@ -371,8 +371,8 @@ span.hT {
             isDragging = true;
 
             // 드래그가 시작된 위치 저장
-            offsetX = e.clientX - tMini.getBoundingClientRect().right;
-            offsetY = e.clientY - tMini.getBoundingClientRect().bottom;
+            offsetX = e.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
+            offsetY = e.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
 
 
         }, 300);
@@ -417,8 +417,8 @@ span.hT {
 
             // 드래그가 시작된 위치 저장
             const touch = e.touches[0];
-            offsetX = touch.clientX - tMini.getBoundingClientRect().right;
-            offsetY = touch.clientY - tMini.getBoundingClientRect().bottom;
+            offsetX = touch.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
+            offsetY = touch.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
             // 이벤트 기본 동작 막기
             e.preventDefault();
         }, 500);
