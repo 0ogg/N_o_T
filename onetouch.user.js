@@ -251,7 +251,7 @@ span.hT {
     place-items: center;
 }
 .nm {
-margin: 0;
+    margin: 0;
 }
 
 `;
@@ -357,7 +357,7 @@ margin: 0;
             });
         } else {
             // 번역이 필요하지 않은 경우 바로 추가 로직 실행
-                prevText = pText;
+            prevText = pText;
             continueProcessing();
         }
 
@@ -488,6 +488,28 @@ margin: 0;
 
 
 
+    // 설정창 탭 세번
+    var tapCount = 0;
+    var lastTapTime = 0;
+
+    document.addEventListener("click", function() {
+        var currentTime = new Date().getTime();
+        var tapInterval = currentTime - lastTapTime;
+
+        if (tapInterval < 500) {
+            tapCount++;
+        } else {
+            tapCount = 0;
+        }
+
+        lastTapTime = currentTime;
+
+        if (tapCount === 2) {
+            // 세 번 탭할 때 수행할 동작
+            toggleSettings();
+            tapCount = 0; // 초기화
+        }
+    });
 
 
     // 설정창 ⚙️
