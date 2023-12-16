@@ -335,6 +335,8 @@ span.hT {
 
     // 스크립트 추출
     var prevText = '';
+    var prevTrans = '';
+    var apiN = 0;
     function getExtractedText(length) {
         // 본문 내용 추출
         var proseMirrorDiv = document.querySelector('.ProseMirror');
@@ -348,15 +350,17 @@ span.hT {
             }
         }
         // api 번역
-        if (pText !== prevText && (dplD || dplC !== 0)) {
+        if ((apiN == 0 || pText !== prevText) && (dplD || dplC !== 0)) {
             translateText(pText, function (translatedText) {
+                apiN++
                 prevText = pText;
                 pText = translatedText;
+                prevTrans = pText;
                 continueProcessing(); // 번역이 완료된 후에 추가 로직 실행
-                dplC = 0;
             });
         } else {
             // 번역이 필요하지 않은 경우 바로 추가 로직 실행
+            if (pText == prevText && (dplD || dplC !== 0)) pText = prevTrans + '\n<중복 요청>';
             prevText = pText;
             continueProcessing();
         }
@@ -370,6 +374,7 @@ span.hT {
             pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
 
             extractedText.innerHTML = pText;
+            dplC = 0;
         }
     }
 
