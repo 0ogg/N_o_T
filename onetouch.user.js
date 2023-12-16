@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.1
-// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 익명 변환 통합
+// @version      2.2
+// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 익명 변환 통합 + 딥엘 api 통합
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
 // @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
@@ -63,7 +63,7 @@
 #ns-settings-div {
     /* 설정창 스타일 */
     width: 240px;
-    height: 450px;
+    height: 500px;
     position: fixed;
     top: 50%;
     left: 50%;
@@ -250,6 +250,9 @@ span.hT {
     text-align: center;
     place-items: center;
 }
+.nm {
+margin: 0;
+}
 
 `;
     // style 요소에 CSS 코드를 추가합니다.
@@ -267,6 +270,8 @@ span.hT {
     var tMainColor = localStorage.getItem('tMainColor');
     var nsIconSize = localStorage.getItem('ns-icon-size') || '30';
     var nsIconUrl = localStorage.getItem('ns-icon-url') || 'url 입력';
+    var dplD = JSON.parse(localStorage.getItem('dplD')) || false;
+    var dplApi = localStorage.getItem('dplApi') || '';
     nsIconLoad();
     function nsIconLoad() {
         document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
@@ -329,6 +334,7 @@ span.hT {
     }
 
     // 스크립트 추출
+    var prevText = '';
     function getExtractedText(length) {
         // 본문 내용 추출
         var proseMirrorDiv = document.querySelector('.ProseMirror');
@@ -336,19 +342,35 @@ span.hT {
         var pText = '';
         for (var i = paragraphs.length - 1; i >= 0; i--) {
             var paragraphText = paragraphs[i].textContent;
-            pText = paragraphText + '<br>' + pText;
+            pText = paragraphText + '\n' + pText;
             if (pText.length >= length) {
                 break;
             }
         }
+        // api 번역
+        if (pText !== prevText && (dplD || dplC !== 0)) {
+            translateText(pText, function (translatedText) {
+                prevText = pText;
+                pText = translatedText;
+                continueProcessing(); // 번역이 완료된 후에 추가 로직 실행
+                dplC = 0;
+            });
+        } else {
+            // 번역이 필요하지 않은 경우 바로 추가 로직 실행
+                prevText = pText;
+            continueProcessing();
+        }
 
-        // 하이라이트 처리
-        updateTextStyle();
-        var pattern = /"([^"]+)"/g;
-        var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
-        pText = newText;
 
-        extractedText.innerHTML = pText;
+        function continueProcessing() {
+            // 하이라이트 처리
+            updateTextStyle();
+            var pattern = /"([^"]+)"/g;
+            var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
+            pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
+
+            extractedText.innerHTML = pText;
+        }
     }
 
     // 아이콘 이동 함수
@@ -563,7 +585,12 @@ span.hT {
         </div>
         <button id="replace-button" class="setBtn">변환</button><br>
     </div>
-                      `]
+                      `],
+                       ['DeepL',`
+                       <h3>DeepL API 사용</h3>
+                       <label for ="dplApi">API key: </label><input type="text" class="ns-input" id="dplApi" value="${dplApi}"><br>
+                       <label for ="dplD">DeepL을 기본 번역으로 사용</label><input type="checkbox" class="ns-check" id="dplD" ${dplD ? 'checked' : ''}>
+                           `]
                       ];
     var setInDiv = document.querySelector('#setInDiv');
     var setInMenu = document.querySelector('#setInMenu');
@@ -679,6 +706,16 @@ span.hT {
 
         // 이미지 URL 설정
         img.src = imageUrl;
+    });
+
+    // 딥엘 설정
+    document.getElementById('dplApi').addEventListener('input', function () {
+        localStorage.setItem('dplApi', this.value);
+        dplApi = localStorage.getItem('dplApi');
+    });
+    document.getElementById('dplD').addEventListener('change', function () {
+        localStorage.setItem('dplD', this.checked);
+        dplD = JSON.parse(localStorage.getItem('dplD'));
     });
 
     function updateTextStyle() {
@@ -942,6 +979,7 @@ span.hT {
     // 설정
     var btnSettings = document.querySelector('#btnSettings');
     btnSettings.addEventListener('click', toggleSettings);
+
     // 찾아서 수정
     const replaceButton = document.querySelector('#replace-button');
 
@@ -955,6 +993,64 @@ span.hT {
         var newText = source.replaceAll(new RegExp(findTextInput1, 'g'), replaceTextInput1);
         newText = newText.replaceAll(new RegExp(findTextInput2, 'g'), replaceTextInput2);
         extractedText.innerHTML = newText;
+    });
+
+
+    // 딥엘 api 번역
+    function translateText(text, callback) {
+        const apiUrl = "https://api-free.deepl.com/v2/translate";
+        const requestData = {
+            auth_key: dplApi,
+            text: text,
+            source_lang: "EN",
+            target_lang: "KO",
+        };
+
+        fetch(apiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: Object.entries(requestData)
+            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+            .join("&"),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+            if (data.translations && data.translations.length > 0) {
+                const translatedText = data.translations[0].text;
+                callback(translatedText);
+            } else {
+                console.error("Translation failed. Response:", data);
+                callback(""); // 빈 문자열로 콜백 호출
+            }
+        })
+            .catch((error) => {
+            console.error("Translation error:", error);
+            callback(""); // 빈 문자열로 콜백 호출
+        });
+    }
+
+    // 번역하기 버튼
+
+    const button = document.createElement("button");
+    button.textContent = "번역하기";
+    button.style.position = "fixed";
+    button.style.top = "10px";
+    button.style.right = "10px"; // Set the right position to 10px
+
+    // Apply styles
+    button.style.color = "var(--Tmain-color)";
+    button.style.background = "var(--loader-color)";
+    button.style.border = "1px solid var(--loader-color)";
+    button.style.borderRadius = "4px";
+    longCopy.appendChild(button);
+
+    // Add click event listener to the button
+    var dplC = 0;
+    button.addEventListener("click", function() {
+        dplC = 1;
+        getExtractedText(textExtraction);
     });
 
 })();
