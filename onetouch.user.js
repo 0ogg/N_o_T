@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.2
+// @version      2.3
 // @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 익명 변환 통합 + 딥엘 api 통합
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -501,10 +501,10 @@ span.hT {
         var currentTime = new Date().getTime();
         var tapInterval = currentTime - lastTapTime;
 
-        if (tapInterval < 500) {
-            tapCount++;
-        } else {
+        if (tapInterval > 500) {
             tapCount = 0;
+        } else {
+            tapCount++;
         }
 
         lastTapTime = currentTime;
@@ -1076,8 +1076,11 @@ span.hT {
     // Add click event listener to the button
     var dplC = 0;
     button.addEventListener("click", function() {
-        dplC = 1;
-        getExtractedText(textExtraction);
+        if(dplApi==''){
+            console.error("DeepL API를 입력하세요");
+        } else {
+            dplC = 1;
+            getExtractedText(textExtraction);}
     });
 
 })();
