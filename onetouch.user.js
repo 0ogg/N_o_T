@@ -1049,12 +1049,12 @@ span.hT {
                 callback(translatedText);
             } else {
                 console.error("Translation failed. Response:", data);
-                callback(""); // 빈 문자열로 콜백 호출
+                callback("응답이 돌아오지 않습니다."); // 빈 문자열로 콜백 호출
             }
         })
             .catch((error) => {
             console.error("Translation error:", error);
-            callback(""); // 빈 문자열로 콜백 호출
+            callback("잘못된 api입니다."); // 빈 문자열로 콜백 호출
         });
     }
 
