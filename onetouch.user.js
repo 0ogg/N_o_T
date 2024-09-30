@@ -331,7 +331,7 @@ h1, h2, h3 {
         tWide.style.display = 'flex';
         getExtractedText(textExtraction);
         if (tfStat) {
-            setTimeout(replaceText, 600);
+            secTf();
         }
     }
 
@@ -1036,7 +1036,7 @@ h1, h2, h3 {
         tfStat = !tfStat; // tfStat 값을 전환
         this.innerHTML = tfStat ? '💡' : '🔌';
 
-console.log('tfStat:', tfStat);
+        console.log('tfStat:', tfStat);
     }
     printTf();
 
@@ -1096,9 +1096,29 @@ console.log('tfStat:', tfStat);
     // 장문 추출
     var btnLong = document.querySelector('#btnLong');
     btnLong.addEventListener('click', function () {
-        getExtractedText(10000);
+        extractedText.removeAttribute('translate');
+        getExtractedText(1000000);
+        if (tfStat) {
+            secTf();
+        }
     });
 
+// 변환 딜레이
+    function secTf() {
+        var delayN = extractedText.innerText.length;
+            if (delayN > 9999) delayN = delayN / 80;
+           if (delayN > 14000) delayN = delayN * 0.8;
+        if (delayN < 600) delayN = 600;
+
+
+        extractedText.style.fontSize = '0.2px';
+        setTimeout(() => {
+            extractedText.style.fontSize = ''; // 기본 크기로 복구
+        }, delayN - 50);
+        setTimeout(replaceText, delayN);
+
+
+    }
     //복사
     var btnCopy = document.querySelector('#btnCopy');
     btnCopy.addEventListener('click', function () {
@@ -1176,7 +1196,8 @@ console.log('tfStat:', tfStat);
             console.error("DeepL API를 입력하세요");
         } else {
             dplC = 1;
-            getExtractedText(textExtraction);}
+            getExtractedText(textExtraction);
+            setTimeout(replaceText, 600);}
     });
 
 })();
