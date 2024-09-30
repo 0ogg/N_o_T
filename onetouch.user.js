@@ -1031,13 +1031,27 @@ h1, h2, h3 {
 
     document.getElementById('tfPlus').addEventListener('click', addTf);
     document.getElementById('tfOn').addEventListener('click', tfOff);
-    var tfStat = false;
-    function tfOff() {
-        tfStat = !tfStat; // tfStat 값을 전환
-        this.innerHTML = tfStat ? '💡' : '🔌';
+    var tfStat = localStorage.getItem('tfStat') === 'true' ? true : false; // 문자열을 불리언으로 변환
 
-        console.log('tfStat:', tfStat);
-    }
+
+// 초기 상태에 따라 버튼의 아이콘 설정
+document.addEventListener('DOMContentLoaded', function() {
+    var button = document.getElementById('tfOn'); // 버튼의 ID가 'toggleButton'이라고 가정
+    button.innerHTML = tfStat ? '💡' : '🔌';
+});
+
+// tfOff 함수
+function tfOff() {
+    // tfStat 값을 반전
+    tfStat = !tfStat;
+
+    // 로컬 스토리지에 값 저장 (문자열로 변환 필요)
+    localStorage.setItem('tfStat', tfStat.toString());
+
+    // 버튼 아이콘 변경
+    this.innerHTML = tfStat ? '💡' : '🔌';
+}
+
     printTf();
 
 
