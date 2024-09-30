@@ -990,7 +990,6 @@ h1, h2, h3 {
                 return function(event) {
                     tfStock[index].before = event.target.value;
                     uploadTfStock(); // 입력한 값으로 즉시 업데이트
-                    replaceText();
                 };
             })(i));
 
@@ -1005,7 +1004,6 @@ h1, h2, h3 {
                 return function(event) {
                     tfStock[index].after = event.target.value;
                     uploadTfStock(); // 입력한 값으로 즉시 업데이트
-                    replaceText();
                 };
             })(i));
 
