@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      2.3
-// @description  novel ai 보조툴 (번역용 추출 + css 커스텀 프리셋) + 익명 변환 통합 + 딥엘 api 통합
+// @version      3.0
+// @description  novel ai 보조툴
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
 // @icon         https://novelai.net/_next/static/media/settings.37ac2cdf.svg
@@ -94,13 +94,17 @@
     vertical-align: middle;
     display: inline-block;
     width: 13px;
+    margin-right: 5px;
 }
 
 .ns-input {
-    width: 80px;
+    width: 65px;
     padding: 2px;
     margin: 1px;
     backdrop-filter: blur(50px);
+}
+#dplApi {
+width: 100px;
 }
 
 #ns-color-code {
@@ -214,6 +218,12 @@ span.hT {
     max-height: 200px;
 }
 
+#tfList {
+margin: 0;
+    overflow: scroll;
+    max-height: 200px;
+}
+
 #setExit {
     width: 100%;
     margin: 0 auto;
@@ -252,6 +262,10 @@ span.hT {
 }
 .nm {
     margin: 0;
+}
+
+h1, h2, h3 {
+  font-family: inherit;
 }
 
 `;
@@ -311,9 +325,14 @@ span.hT {
     tMini.addEventListener("click", tIconClick);
 
     function tIconClick() {
+
+        extractedText.removeAttribute('translate');
         tColorEx();
         tWide.style.display = 'flex';
         getExtractedText(textExtraction);
+        if (tfStat) {
+            setTimeout(replaceText, 600);
+        }
     }
 
     // 확장창 클릭
@@ -492,31 +511,6 @@ span.hT {
     document.addEventListener("mouseup", handleIconDragEnd);
 
 
-
-    // 설정창 탭 세번
-    var tapCount = 0;
-    var lastTapTime = 0;
-
-    document.addEventListener("click", function() {
-        var currentTime = new Date().getTime();
-        var tapInterval = currentTime - lastTapTime;
-
-        if (tapInterval > 500) {
-            tapCount = 0;
-        } else {
-            tapCount++;
-        }
-
-        lastTapTime = currentTime;
-
-        if (tapCount === 2) {
-            // 세 번 탭할 때 수행할 동작
-            toggleSettings();
-            tapCount = 0; // 초기화
-        }
-    });
-
-
     // 설정창 ⚙️
     var nsSettingsDiv = document.createElement('div');
     nsSettingsDiv.id = 'ns-settings-div';
@@ -594,23 +588,10 @@ span.hT {
     <button id = "stockBup" class="setBtn">📥백업 복사</button> <button id = "stockImport" class="setBtn">📤백업 등록</button>
     `],
                        ['변환',`
-                       <h3>변환</h3>
+                       <h3>단어 변환</h3>
     <div>
-        <div style="padding-bottom: 10px;">
-            <div style="padding-bottom: 10px;">
-                <label for="find-text-input1">단어1: </label><br>
-                <input type="text" id="find-text-input1" class="ns-input" value="Jane" />
-                <label for="replace-text-input1"> → </label>
-                <input type="text" id="replace-text-input1" class="ns-input" value="깡캐" />
-            </div>
-            <div>
-                <label for="find-text-input2">단어2: </label><br>
-                <input type="text" id="find-text-input2" class="ns-input" value="John" />
-                <label for="replace-text-input2"> → </label>
-                <input type="text" id="replace-text-input2" class="ns-input" value="깡통" />
-            </div>
-        </div>
-        <button id="replace-button" class="setBtn">변환</button><br>
+    <button id = "tfOn" class ="setBtn">💡</button><input type="text" class="ns-input" id="ftF" value="원본"><input type="text" class="ns-input" id="ftT" value="수정 후"> <button id ="tfPlus" class="setBtn"> + </button>
+    <div id="tfList"></div>
     </div>
                       `],
                        ['DeepL',`
@@ -619,6 +600,7 @@ span.hT {
                        <label for ="dplD">DeepL을 기본 번역으로 사용</label><input type="checkbox" class="ns-check" id="dplD" ${dplD ? 'checked' : ''}>
                            `]
                       ];
+
     var setInDiv = document.querySelector('#setInDiv');
     var setInMenu = document.querySelector('#setInMenu');
     var selectSetMenu = 0;
@@ -953,6 +935,154 @@ span.hT {
     })
 
 
+    // 설정메뉴 (2️⃣) 변환
+
+    var tfStock = JSON.parse(localStorage.getItem('tfStock')) || [];
+
+    // 스토리지 저장 함수
+    function uploadTfStock() {
+        localStorage.setItem('tfStock', JSON.stringify(tfStock));
+    }
+
+    // 스토리지에 새 자식 추가
+    function addTf() {
+        var beforeText = document.getElementById('ftF').value;
+        var afterText = document.getElementById('ftT').value;
+        // 새로운 프리셋 추가
+        var newPreset = {
+            status: true, // 기본 상태 True
+            before: beforeText,
+            after: afterText
+        };
+
+        tfStock.push(newPreset); // 배열에 추가
+        uploadTfStock();
+        printTf(); // 업데이트된 내용을 출력
+    }
+
+    // 스크립트 배열 출력 함수
+    function printTf() {
+        var tfList = document.getElementById('tfList');
+        tfList.innerHTML = ''; // 기존 내용 초기화
+
+        for (var i = 0; i < tfStock.length; i++) {
+            // 체크박스 생성 (status와 연동)
+            var statusCheckbox = document.createElement('input');
+            statusCheckbox.setAttribute('type', 'checkbox');
+            statusCheckbox.classList.add('ns-check');
+            statusCheckbox.checked = tfStock[i].status; // 상태에 따라 체크
+            statusCheckbox.addEventListener('change', (function(index) {
+                return function(event) {
+                    tfStock[index].status = event.target.checked;
+                    uploadTfStock();
+                    replaceText();
+                };
+            })(i));
+
+            // 수정전 단어 인풋
+            var beforeInput = document.createElement('input');
+            beforeInput.setAttribute('type', 'text');
+            beforeInput.classList.add('ns-input');
+            beforeInput.setAttribute('value', tfStock[i].before); // 초기값 설정
+
+            // 수정될 때마다 배열 갱신
+            beforeInput.addEventListener('input', (function(index) {
+                return function(event) {
+                    tfStock[index].before = event.target.value;
+                    uploadTfStock(); // 입력한 값으로 즉시 업데이트
+                    replaceText();
+                };
+            })(i));
+
+            // 수정후 단어 인풋
+            var afterInput = document.createElement('input');
+            afterInput.setAttribute('type', 'text');
+            afterInput.classList.add('ns-input');
+            afterInput.setAttribute('value', tfStock[i].after); // 초기값 설정
+
+            // 수정될 때마다 배열 갱신
+            afterInput.addEventListener('input', (function(index) {
+                return function(event) {
+                    tfStock[index].after = event.target.value;
+                    uploadTfStock(); // 입력한 값으로 즉시 업데이트
+                    replaceText();
+                };
+            })(i));
+
+            // 삭제 버튼 생성
+            var deleteButton = document.createElement('button');
+            deleteButton.classList.add('setBtn', 'setBtn-delete');
+            deleteButton.textContent = '🗑️';
+            deleteButton.addEventListener('click', (function(index) {
+                return function() {
+                    tfStock.splice(index, 1);
+                    uploadTfStock();
+                    printTf(); // 삭제 후 리스트 갱신
+                };
+            })(i));
+
+
+            // 각 요소들을 tfList에 추가
+            tfList.appendChild(statusCheckbox);
+            tfList.appendChild(beforeInput);
+            tfList.appendChild(afterInput);
+            tfList.appendChild(deleteButton);
+            tfList.appendChild(document.createElement('br'));
+        }
+    }
+
+    document.getElementById('tfPlus').addEventListener('click', addTf);
+    document.getElementById('tfOn').addEventListener('click', tfOff);
+    var tfStat = true;
+    function tfOff() {
+        tfStat = !tfStat; // tfStat 값을 전환
+        this.innerHTML = tfStat ? '💡' : '🔌';
+
+console.log('tfStat:', tfStat);
+    }
+    printTf();
+
+
+    function replaceText() {
+        extractedText.setAttribute('translate', 'no');
+        var textContent = extractedText.innerHTML;
+
+        // localStorage에서 tfStock 가져오기
+        var tfStock = JSON.parse(localStorage.getItem('tfStock')) || [];
+
+        tfStock.forEach(function(preset) {
+            // status가 true인 경우에만 변환 수행
+            if (preset.status) {
+                var beforeText = preset.before;
+                var afterText = preset.after;
+
+                // 정규 표현식: 단어와 조사를 분리하여 캡처
+                var regex = new RegExp('(' + beforeText + ')(은|는|이|가|을|를|와|과)?', 'g');
+
+                textContent = textContent.replace(regex, function(match, word, particle) {
+                    var lastChar = afterText.charCodeAt(afterText.length - 1);
+                    var hasBatchim = (lastChar - 0xAC00) % 28 !== 0;
+
+                    var newParticle = '';
+                    if (particle) {
+                        if (particle === '은' || particle === '는') {
+                            newParticle = hasBatchim ? '은' : '는';
+                        } else if (particle === '이' || particle === '가') {
+                            newParticle = hasBatchim ? '이' : '가';
+                        } else if (particle === '을' || particle === '를') {
+                            newParticle = hasBatchim ? '을' : '를';
+                        } else if (particle === '와' || particle === '과') {
+                            newParticle = hasBatchim ? '과' : '와';
+                        }
+                    }
+
+                    return afterText + newParticle;
+                });
+            }
+        });
+
+        extractedText.innerHTML = textContent;
+    }
 
     // 번역창
     var longCopy = document.createElement('div');
@@ -960,7 +1090,6 @@ span.hT {
     longCopy.innerHTML = `
     <div id="btnLong" class="longCopyBtn">장문</div>
     <div id="btnCopy" class="longCopyBtn">복사</div>
-    <div id="btnAuto" class="longCopyBtn">자동</div>
     <div id="btnSettings" class="longCopyBtn">설정</div>
   `;
     tWide.appendChild(longCopy);
@@ -976,7 +1105,7 @@ span.hT {
     var btnCopy = document.querySelector('#btnCopy');
     btnCopy.addEventListener('click', function () {
         var tempInput = document.createElement('textarea');
-        var copyText = extractedText.innerHTML;
+        var copyText = extractedText.innerText;
         copyText = copyText.replace(/<br>/g, '\n');
         copyText = copyText.replace(/<[^>]*>/g, "");
         tempInput.value = copyText;
@@ -987,40 +1116,9 @@ span.hT {
     });
 
 
-    // 오토 : 개선필요 : 제네레이터 시에만 꽂히는 플래그 찾기
-    var btnAuto = document.querySelector('#btnAuto');
-    var autoOn = false;
-    btnAuto.addEventListener('click', function () {
-        autoOn = !autoOn;
-        if (autoOn) {
-            btnAuto.classList.add('btnOn');
-        } else {
-            btnAuto.classList.remove('btnOn');
-        }
-    });
-    document.addEventListener("transitionend", function(event) {
-        if (!autoOn || !event.target.classList.contains("send")) return;
-        tIconClick();
-    });
-
     // 설정
     var btnSettings = document.querySelector('#btnSettings');
     btnSettings.addEventListener('click', toggleSettings);
-
-    // 찾아서 수정
-    const replaceButton = document.querySelector('#replace-button');
-
-    replaceButton.addEventListener('click', () => {
-        const findTextInput1 = '\\b' + document.querySelector('#find-text-input1').value + '\\b';
-        const replaceTextInput1 = document.querySelector('#replace-text-input1').value;
-        const findTextInput2 = '\\b' + document.querySelector('#find-text-input2').value + '\\b';
-        const replaceTextInput2 = document.querySelector('#replace-text-input2').value;
-
-        var source = extractedText.innerHTML;
-        var newText = source.replaceAll(new RegExp(findTextInput1, 'g'), replaceTextInput1);
-        newText = newText.replaceAll(new RegExp(findTextInput2, 'g'), replaceTextInput2);
-        extractedText.innerHTML = newText;
-    });
 
 
     // 딥엘 api 번역
@@ -1049,7 +1147,7 @@ span.hT {
                 callback(translatedText);
             } else {
                 console.error("Translation failed. Response:", data);
-                callback("응답이 돌아오지 않습니다."); // 빈 문자열로 콜백 호출
+                callback("응답이 돌아오지 않았습니다."); // 빈 문자열로 콜백 호출
             }
         })
             .catch((error) => {
@@ -1061,7 +1159,7 @@ span.hT {
     // 번역하기 버튼
 
     const button = document.createElement("button");
-    button.textContent = "번역하기";
+    button.textContent = "DeepL번역";
     button.style.position = "fixed";
     button.style.top = "10px";
     button.style.right = "10px"; // Set the right position to 10px
