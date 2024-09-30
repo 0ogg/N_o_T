@@ -590,7 +590,7 @@ h1, h2, h3 {
                        ['변환',`
                        <h3>단어 변환</h3>
     <div>
-    <button id = "tfOn" class ="setBtn">💡</button><input type="text" class="ns-input" id="ftF" value="원본"><input type="text" class="ns-input" id="ftT" value="수정 후"> <button id ="tfPlus" class="setBtn"> + </button>
+    <button id = "tfOn" class ="setBtn">🔌</button><input type="text" class="ns-input" id="ftF" value="원본"><input type="text" class="ns-input" id="ftT" value="수정 후"> <button id ="tfPlus" class="setBtn"> + </button>
     <div id="tfList"></div>
     </div>
                       `],
@@ -1031,7 +1031,7 @@ h1, h2, h3 {
 
     document.getElementById('tfPlus').addEventListener('click', addTf);
     document.getElementById('tfOn').addEventListener('click', tfOff);
-    var tfStat = true;
+    var tfStat = false;
     function tfOff() {
         tfStat = !tfStat; // tfStat 값을 전환
         this.innerHTML = tfStat ? '💡' : '🔌';
