@@ -395,7 +395,7 @@ h1, h2, h3 {
     }
 
     // 번역 로직
-    if (dplD || geminiDefault || dplC !== 0)) {
+    if (dplD || geminiDefault || dplC !== 0) {
         if (localStorage.getItem('geminiDefault') === 'true') {
             translateWithGemini(pText, function (translatedText) {
                 prevText = pText;
