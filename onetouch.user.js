@@ -76,6 +76,28 @@
     backdrop-filter: blur(30px) !important;
 }
 
+#ns-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#setExit {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #000;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+
+#setExit:hover {
+    color: #f00;
+}
+
 #ns-settings-button {
     /* 설정 오픈 버튼 스타일 */
     position: fixed;
@@ -224,12 +246,6 @@ margin: 0;
     max-height: 200px;
 }
 
-#setExit {
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-}
-
 #setInMenu {
     margin: 5px 0px;
 }
@@ -266,6 +282,20 @@ margin: 0;
 
 h1, h2, h3 {
   font-family: inherit;
+}
+#translation-input-container {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+}
+
+#ko-en-input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    backdrop-filter: blur(50px);
 }
 
 `;
@@ -356,46 +386,51 @@ h1, h2, h3 {
     var prevText = '';
     var prevTrans = '';
     var apiN = 0;
-    function getExtractedText(length) {
-        // 본문 내용 추출
-        var proseMirrorDiv = document.querySelector('.ProseMirror');
-        var paragraphs = proseMirrorDiv.querySelectorAll('p');
-        var pText = '';
-        for (var i = paragraphs.length - 1; i >= 0; i--) {
-            var paragraphText = paragraphs[i].textContent;
-            pText = paragraphText + '\n' + pText;
-            if (pText.length >= length) {
-                break;
-            }
+   function getExtractedText(length) {
+    var proseMirrorDiv = document.querySelector('.ProseMirror');
+    var paragraphs = proseMirrorDiv.querySelectorAll('p');
+    var pText = '';
+    for (var i = paragraphs.length - 1; i >= 0; i--) {
+        var paragraphText = paragraphs[i].textContent;
+        pText = paragraphText + '\n' + pText;
+        if (pText.length >= length) {
+            break;
         }
-        // api 번역
-        if ((apiN == 0 || pText !== prevText) && (dplD || dplC !== 0)) {
-            translateText(pText, function (translatedText) {
-                apiN++
+    }
+
+    // 번역 로직
+    if ((apiN == 0 || pText !== prevText) && (dplD || geminiDefault || dplC !== 0)) {
+        if (localStorage.getItem('geminiDefault') === 'true') {
+            translateWithGemini(pText, function (translatedText) {
+                apiN++;
                 prevText = pText;
                 pText = translatedText;
                 prevTrans = pText;
-                continueProcessing(); // 번역이 완료된 후에 추가 로직 실행
+                continueProcessing();
             });
         } else {
-            // 번역이 필요하지 않은 경우 바로 추가 로직 실행
-            if (pText == prevText && (dplD || dplC !== 0)) pText = prevTrans + '\n<중복 요청>';
-            prevText = pText;
-            continueProcessing();
+            translateText(pText, function (translatedText) {
+                apiN++;
+                prevText = pText;
+                pText = translatedText;
+                prevTrans = pText;
+                continueProcessing();
+            });
         }
-
-
-        function continueProcessing() {
-            // 하이라이트 처리
-            updateTextStyle();
-            var pattern = /"([^"]+)"/g;
-            var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
-            pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
-
-            extractedText.innerHTML = pText;
-            dplC = 0;
-        }
+    } else {
+        continueProcessing();
     }
+
+    function continueProcessing() {
+        updateTextStyle();
+        var pattern = /"([^"]+)"/g;
+        var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
+        pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
+
+        extractedText.innerHTML = pText;
+        dplC = 0;
+    }
+}
 
     // 아이콘 이동 함수
     // 아이콘 드래그 변수
@@ -510,38 +545,37 @@ h1, h2, h3 {
     document.addEventListener("mousemove", handleIconDrag);
     document.addEventListener("mouseup", handleIconDragEnd);
 
+// 설정창 ⚙️
+var nsSettingsDiv = document.createElement('div');
+nsSettingsDiv.id = 'ns-settings-div';
 
-    // 설정창 ⚙️
-    var nsSettingsDiv = document.createElement('div');
-    nsSettingsDiv.id = 'ns-settings-div';
-
-    // 설정창의 내용을 구성합니다.
-    nsSettingsDiv.innerHTML = `
-    <h2>설정</h2>
+// 설정창의 내용을 구성합니다.
+nsSettingsDiv.innerHTML = `
+    <div id="ns-settings-header">
+        <h2>설정</h2>
+        <button id="setExit" class="setBtn">×</button>
+    </div>
     <div id="setInMenu"></div>
     <div id="setInDiv"></div>
-    <button id = "setExit" class="setBtn">창닫기</button>
-  `;
-    // 생성한 설정창을 문서의 body에 추가합니다.
-    document.body.appendChild(nsSettingsDiv);
+`;
 
+// 생성한 설정창을 문서의 body에 추가합니다.
+document.body.appendChild(nsSettingsDiv);
 
-    // 설정 오픈 버튼을 생성합니다. ⛔️ 설정창 토글 버튼 비활성화
-    //⛔️    var nsSettingsButton = document.createElement('div');
-    //⛔️    nsSettingsButton.id = 'ns-settings-button';
-    // 설정 오픈 버튼을 문서의 body에 추가합니다.
-    //⛔️    document.body.appendChild(nsSettingsButton);
-
-    // 설정창 열기/닫기를 처리하는 함수
-    function toggleSettings() {
-        if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
-            tColorEx();
-            nsSettingsDiv.style.display = 'block';
-        } else {
-            nsSettingsDiv.style.display = 'none';
-        }
+// 설정창 열기/닫기를 처리하는 함수
+function toggleSettings() {
+    if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
+        tColorEx();
+        nsSettingsDiv.style.display = 'block';
+    } else {
+        nsSettingsDiv.style.display = 'none';
     }
+}
 
+// "X" 버튼 클릭 시 설정창 닫기
+document.getElementById('setExit').addEventListener('click', function() {
+    nsSettingsDiv.style.display = 'none';
+});
     // 설정 오픈 버튼의 클릭 이벤트 핸들러 등록
     //⛔️    nsSettingsButton.addEventListener('click', toggleSettings);
 
@@ -594,6 +628,39 @@ h1, h2, h3 {
     <div id="tfList"></div>
     </div>
                       `],
+                       ['Gemini', `
+        <h3>Gemini API 사용</h3>
+        <label for="geminiApi">API key: </label>
+        <input type="text" style="width:60%"  class="ns-input" id="geminiApi" value="${localStorage.getItem('geminiApi') || ''}"><br>
+        <label for="geminiModel">모델 선택: </label>
+        <select id="geminiModel" style="width:65%" class="ns-input">
+            <option value="gemini-2.0-flash-thinking-exp">gemini-2.0-flash-thinking-exp</option>
+            <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp</option>
+            <option value="gemini-exp-1206">gemini-exp-1206</option>
+            <option value="gemini-exp-1121">gemini-exp-1121</option>
+            <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+            <option value="gemini-1.5-pro-001">gemini-1.5-pro-001</option>
+            <option value="gemini-1.5-pro-002">gemini-1.5-pro-002</option>
+            <option value="gemini-1.5-flash-8b-latest">gemini-1.5-flash-8b-latest</option>
+            <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b</option>
+            <option value="gemini-1.5-flash-8b-001">gemini-1.5-flash-8b-001</option>
+            <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+            <option value="gemini-1.5-flash-001">gemini-1.5-flash-001</option>
+            <option value="gemini-1.5-flash-002">gemini-1.5-flash-002</option>
+        </select><br>
+  
+        <label for="geminiPrompt">영한 번역 프롬프트: </label>
+        <textarea id="geminiPrompt" style="width:100%" class="ns-input" rows="3" cols="50">${localStorage.getItem('geminiPrompt') || '다음 영어 텍스트를 한국어로 번역해주세요.'}</textarea><br>
+        <label for="geminiKoEnPrompt">한영 번역 프롬프트: </label>
+        <textarea id="geminiKoEnPrompt" style="width:100%" class="ns-input" rows="3" cols="50">${localStorage.getItem('geminiKoEnPrompt') || '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.'}</textarea><br>
+        <label for="geminiDefault">Gemini를 기본 번역으로 사용</label>
+        <input type="checkbox" class="ns-check" id="geminiDefault" ${localStorage.getItem('geminiDefault') === 'true' ? 'checked' : ''}>
+        <label for="geminiInputEnabled">입력 번역 활성</label>
+        <input type="checkbox" class="ns-check" id="geminiInputEnabled" ${localStorage.getItem('geminiInputEnabled') === 'true' ? 'checked' : ''}>
+
+    `],
                        ['DeepL',`
                        <h3>DeepL API 사용</h3>
                        <label for ="dplApi">API key: </label><input type="text" class="ns-input" id="dplApi" value="${dplApi}"><br>
@@ -717,16 +784,57 @@ h1, h2, h3 {
         img.src = imageUrl;
     });
 
+  // 제미나이 설정
+  
+document.getElementById('geminiApi').addEventListener('input', function () {
+    localStorage.setItem('geminiApi', this.value);
+});
+
+document.getElementById('geminiModel').addEventListener('change', function () {
+    localStorage.setItem('geminiModel', this.value);
+});
+
+document.getElementById('geminiPrompt').addEventListener('input', function () {
+    localStorage.setItem('geminiPrompt', this.value);
+});
+document.getElementById('geminiDefault').addEventListener('change', function () {
+    localStorage.setItem('geminiDefault', this.checked);
+  
+    if (this.checked) {
+        // Gemini를 기본으로 설정하면 DeepL 기본 설정 해제
+        document.getElementById('dplD').checked = false;
+        localStorage.setItem('dplD', false);
+        dplD = JSON.parse(localStorage.getItem('dplD'));
+    }
+});
+
+// Add event listener for the Korean to English prompt
+document.getElementById('geminiKoEnPrompt').addEventListener('input', function() {
+    localStorage.setItem('geminiKoEnPrompt', this.value);
+});
+
+// Add event listener for the input translation checkbox
+document.getElementById('geminiInputEnabled').addEventListener('change', function() {
+    localStorage.setItem('geminiInputEnabled', this.checked);
+    toggleTranslationInput();
+});
     // 딥엘 설정
     document.getElementById('dplApi').addEventListener('input', function () {
         localStorage.setItem('dplApi', this.value);
         dplApi = localStorage.getItem('dplApi');
     });
-    document.getElementById('dplD').addEventListener('change', function () {
+   
+document.getElementById('dplD').addEventListener('change', function () {
         localStorage.setItem('dplD', this.checked);
         dplD = JSON.parse(localStorage.getItem('dplD'));
-    });
+    if (this.checked) {
+        document.getElementById('geminiDefault').checked = false;
+        localStorage.setItem('geminiDefault', false);
+    }
+}); 
 
+  //강조 실행
+ 
     function updateTextStyle() {
 
         italicActive = JSON.parse(localStorage.getItem('ns-italic'));
@@ -1112,27 +1220,8 @@ function tfOff() {
     btnLong.addEventListener('click', function () {
         extractedText.removeAttribute('translate');
         getExtractedText(1000000);
-        if (tfStat) {
-            secTf();
-        }
     });
 
-// 변환 딜레이
-    function secTf() {
-        var delayN = extractedText.innerText.length;
-            if (delayN > 9999) delayN = delayN / 80;
-           if (delayN > 14000) delayN = delayN * 0.8;
-        if (delayN < 600) delayN = 600;
-
-
-        extractedText.style.fontSize = '0.2px';
-        setTimeout(() => {
-            extractedText.style.fontSize = ''; // 기본 크기로 복구
-        }, delayN - 50);
-        setTimeout(replaceText, delayN);
-
-
-    }
     //복사
     var btnCopy = document.querySelector('#btnCopy');
     btnCopy.addEventListener('click', function () {
@@ -1152,7 +1241,184 @@ function tfOff() {
     var btnSettings = document.querySelector('#btnSettings');
     btnSettings.addEventListener('click', toggleSettings);
 
+// 제미나이 번역
+async function translateWithGemini(text, callback) {
+    const selectedModel = localStorage.getItem('geminiModel');
+    const apiKey = localStorage.getItem('geminiApi');
+    const customPrompt = localStorage.getItem('geminiPrompt') || '다음 영어 텍스트를 한국어로 번역해주세요.';
 
+    // Safety settings from the first version
+    const safetySettings = Object.values({
+        HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT',
+        HARM_CATEGORY_HATE_SPEECH: 'HARM_CATEGORY_HATE_SPEECH',
+        HARM_CATEGORY_SEXUALLY_EXPLICIT: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        HARM_CATEGORY_DANGEROUS_CONTENT: 'HARM_CATEGORY_DANGEROUS_CONTENT'
+    }).map(category => ({
+        category: category,
+        threshold: selectedModel === 'gemini-2.0-flash-exp' ? 'OFF' : 'BLOCK_NONE',
+    }));
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                           text: `${customPrompt}\n\n${text}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.6,
+                        topK: 40,
+                        topP: 0.8,
+                    },
+                    safetySettings: safetySettings
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Gemini API 요청 실패');
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates.length > 0) {
+            const translatedText = data.candidates[0].content.parts[0].text;
+            callback(translatedText);
+        } else {
+            console.error("Translation failed. Response:", data);
+            callback("응답이 돌아오지 않았습니다.");
+        }
+    } catch (error) {
+        console.error("Translation error:", error);
+        callback("잘못된 API입니다.");
+    }
+}
+  
+  // 한영 입력창
+  
+// Function to toggle translation input visibility
+function toggleTranslationInput() {
+    const isEnabled = localStorage.getItem('geminiInputEnabled') === 'true';
+    const container = document.getElementById('translation-input-container');
+    if (!container) {
+        createTranslationInput();
+    }
+    document.getElementById('translation-input-container').style.display = isEnabled ? 'block' : 'none';
+}
+
+// Create translation input element
+function createTranslationInput() {
+    const container = document.createElement('div');
+    container.id = 'translation-input-container';
+    
+    const input = document.createElement('input');
+    input.id = 'ko-en-input';
+    input.type = 'text';
+    input.placeholder = '번역할 한국어를 입력하세요 (Enter로 번역)';
+    
+    container.appendChild(input);
+    tWide.appendChild(container);
+    input.addEventListener('keypress', async function(e) {
+    if (e.key === 'Enter') {
+        const text = this.value;
+        const translatedText = await translateKoToEn(text); // 번역 함수 호출
+        const proseMirror = document.querySelector('.ProseMirror'); // .ProseMirror div 선택
+        const lastParagraph = proseMirror.querySelector('p:last-child'); // 마지막 <p> 태그 선택
+
+        if (lastParagraph) {
+            // <span class="userText"> 태그로 번역된 텍스트를 감싸서 추가
+            const span = document.createElement('span');
+            span.className = 'userText';
+            span.textContent = translatedText;
+            lastParagraph.appendChild(span);
+        }
+
+        this.value = ''; // 입력 필드 초기화
+    }
+});
+}
+  
+// Korean to English translation function
+async function translateKoToEn(text) {
+    const selectedModel = localStorage.getItem('geminiModel');
+    const apiKey = localStorage.getItem('geminiApi');
+    const customPrompt = localStorage.getItem('geminiKoEnPrompt') || '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.';
+    const engContext = engContEx();
+  function engContEx() {
+    var proseMirrorDiv = document.querySelector('.ProseMirror');
+    var paragraphs = proseMirrorDiv.querySelectorAll('p');
+    var pText = '';
+    for (var i = paragraphs.length - 1; i >= 0; i--) {
+        var paragraphText = paragraphs[i].textContent;
+        pText = paragraphText + '\n' + pText;
+        if (pText.length >= 500) {
+            break;
+        }
+    }
+    return pText
+  }
+    const safetySettings = Object.values({
+        HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT',
+        HARM_CATEGORY_HATE_SPEECH: 'HARM_CATEGORY_HATE_SPEECH',
+        HARM_CATEGORY_SEXUALLY_EXPLICIT: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        HARM_CATEGORY_DANGEROUS_CONTENT: 'HARM_CATEGORY_DANGEROUS_CONTENT'
+    }).map(category => ({
+        category: category,
+        threshold: selectedModel === 'gemini-2.0-flash-exp' ? 'OFF' : 'BLOCK_NONE',
+    }));
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `${customPrompt}\n직전 문맥:${engContext}\n번역할 텍스트:${text}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.6,
+                        topK: 40,
+                        topP: 0.8,
+                    },
+                    safetySettings: safetySettings
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Gemini API 요청 실패');
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates.length > 0) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            console.error("Translation failed. Response:", data);
+            return "번역에 실패했습니다.";
+        }
+    } catch (error) {
+        console.error("Translation error:", error);
+        return "API 오류가 발생했습니다.";
+    }
+}
+
+// Call toggleTranslationInput on initial load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleTranslationInput();
+});
+  
     // 딥엘 api 번역
     function translateText(text, callback) {
         const apiUrl = "https://api-free.deepl.com/v2/translate";
