@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      3.0
+// @version      3.2
 // @description  novel ai 보조툴
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
