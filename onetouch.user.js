@@ -1318,7 +1318,7 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
         try {
             let previousHeight = proseMirrorDiv.scrollHeight;
             let attempts = 0;
-            const maxAttempts = 50; // 최대 시도 횟수 증가
+            const maxAttempts = 20; // 최대 시도 횟수 증가
 
             while (attempts < maxAttempts) {
                 // 스크롤을 최상단으로 강제 이동
@@ -1399,6 +1399,14 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
             if (e.key === 'Enter') {
                 const text = this.value;
                 const translatedText = await translateKoToEn(text); // 번역 함수 호출
+
+                async function translateKoToEn(text) {
+                    return new Promise((resolve) => {
+                        sendGeminiRequest(text, 'ko-en', function(translatedText) {
+                            resolve(translatedText);
+                        });
+                    });
+                }
                 const proseMirror = document.querySelector('.ProseMirror'); // .ProseMirror div 선택
                 const lastParagraph = proseMirror.querySelector('p:last-child'); // 마지막 <p> 태그 선택
 
