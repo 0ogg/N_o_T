@@ -1318,7 +1318,7 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
         try {
             let previousHeight = proseMirrorDiv.scrollHeight;
             let attempts = 0;
-            const maxAttempts = 20; // 최대 시도 횟수 증가
+            const maxAttempts = 50; // 최대 시도 횟수 증가
 
             while (attempts < maxAttempts) {
                 // 스크롤을 최상단으로 강제 이동
