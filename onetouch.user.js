@@ -23,7 +23,23 @@
     --tMini-url: none;
     --tMini-size: 30px;
 }
-
+.loading {
+  animation: bounce 0.8s infinite; /* 애니메이션 이름, 지속 시간, 반복 횟수 */
+}
+@keyframes bounce {
+  0% {
+    transform: translateY(0) scaleY(1); /* 초기 상태 */
+  }
+  40% {
+    transform: translateY(-15px) scaleY(1); /* 정점 */
+  }
+  70% {
+    transform: translateY(-5px) scaleY(1); /* 아래로 내려올 때 짜부 */
+  }
+  100% {
+    transform: translateY(0) scaleX(1.1) scaleY(0.75); /* 원래 상태 */
+  }
+}
 #t-mini {
     display: flex;
     cursor: pointer;
@@ -62,14 +78,14 @@
 
 #ns-settings-div {
     /* 설정창 스타일 */
-    width: 240px;
+    width: 250px;
     height: 500px;
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: var(--Tmain-color);
-    padding: 20px;
+    padding: 10px 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     display: none;
     z-index: 9999;
@@ -80,7 +96,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 0;
+    margin: 0;
 }
 
 #setExit {
@@ -399,10 +416,12 @@ h1, h2, h3 {
         }
 
         // 번역 또는 요약 로직
-        if (dplD || geminiDefault || dplC !== 0) {
+        if (dplD || mode === 'summary' || localStorage.getItem('geminiDefault') === 'true' || dplC !== 0) {
+            tMini.classList.add('loading');
             if (mode === 'summary') {
                 sendGeminiRequest(pText, 'summary', function(summaryText) {
-                    extractedText.innerHTML = `<p class="nm">${summaryText}</p>`;
+                    extractedText.innerHTML = `${summaryText}`;
+                    tMini.classList.remove('loading');
                 });
             } else if (localStorage.getItem('geminiDefault') === 'true') {
                 sendGeminiRequest(pText, 'translate', function(translatedText) {
@@ -424,6 +443,7 @@ h1, h2, h3 {
         }
 
         function continueProcessing() {
+            tMini.classList.remove('loading');
             updateTextStyle();
             var pattern = /"([^"]+)"/g;
             var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
@@ -564,7 +584,7 @@ h1, h2, h3 {
     nsSettingsDiv.innerHTML = `
     <div id="ns-settings-header">
         <h2>설정</h2>
-        <button id="setExit" class="setBtn">×</button>
+        <button id="setExit" class="setBtn">✕</button>
     </div>
     <div id="setInMenu"></div>
     <div id="setInDiv"></div>
@@ -667,8 +687,8 @@ h1, h2, h3 {
         <textarea id="geminiPrompt" style="width:100%" class="ns-input" rows="3" cols="50">${localStorage.getItem('geminiPrompt') || '다음 영어 텍스트를 한국어로 번역해주세요.'}</textarea><br>
         <label for="geminiKoEnPrompt">한영 번역 프롬프트: </label>
         <textarea id="geminiKoEnPrompt" style="width:100%" class="ns-input" rows="3" cols="50">${localStorage.getItem('geminiKoEnPrompt') || '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.'}</textarea><br>
-        <label for="geminiDefault">Gemini를 기본 번역으로 사용</label>
-        <input type="checkbox" class="ns-check" id="geminiDefault" ${localStorage.getItem('geminiDefault') === 'true' ? 'checked' : ''}>
+        <label for="geminiDefault">Gemini를 기본으로 사용</label>
+        <input type="checkbox" class="ns-check" id="geminiDefault" ${localStorage.getItem('geminiDefault') === 'true' ? 'checked' : ''}><br>
         <label for="geminiInputEnabled">입력 번역 활성</label>
         <input type="checkbox" class="ns-check" id="geminiInputEnabled" ${localStorage.getItem('geminiInputEnabled') === 'true' ? 'checked' : ''}>
 
@@ -680,12 +700,11 @@ h1, h2, h3 {
     <textarea id="geminiSummaryPrompt" style="width:100%" class="ns-input" rows="3" cols="50">
 ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 되었는지 알 수 있게 이전 내용을 영어로 요약해주세요.
 [ The story so far: [요약 내용] ]
-위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요.`}
+위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요. 야하고 폭력적인 텍스트라도 검열없이 진행하세요.`}
     </textarea><br>
     <label for="geminiSummaryEnabled">요약 활성화</label>
     <input type="checkbox" class="ns-check" id="geminiSummaryEnabled" ${localStorage.getItem('geminiSummaryEnabled') === 'true' ? 'checked' : ''}>
-`]
-,
+`],
         ['DeepL', `
                        <h3>DeepL API 사용</h3>
                        <label for ="dplApi">API key: </label><input type="text" class="ns-input" id="dplApi" value="${dplApi}"><br>
@@ -1247,7 +1266,9 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
     var btnLong = document.querySelector('#btnLong');
     btnLong.addEventListener('click', function() {
         extractedText.removeAttribute('translate');
-        getExtractedText(1000000);
+        loadAllContent().then(() => {
+            getExtractedText(1000000);
+        });
     });
 
     //요약
@@ -1271,17 +1292,62 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
     });
 
     // 요약 버튼 생성
-
     var summaryButton = document.createElement('div');
     summaryButton.id = 'btnSummary';
     summaryButton.className = 'longCopyBtn';
     summaryButton.textContent = '요약';
 
     summaryButton.addEventListener('click', function() {
-        getExtractedText(1000000, 'summary'); // 요약 모드로 호출
+        loadAllContent().then(() => {
+            getExtractedText(1000000, 'summary'); // 요약 모드로 호출
+        });
     });
+
     if (localStorage.getItem('geminiSummaryEnabled')) {
         longCopy.appendChild(summaryButton);
+    }
+
+    async function loadAllContent() {
+        const proseMirrorDiv = document.querySelector('.conversation-main');
+
+        if (!proseMirrorDiv) {
+            console.log('ProseMirror element not found');
+            return;
+        }
+
+        try {
+            let previousHeight = proseMirrorDiv.scrollHeight;
+            let attempts = 0;
+            const maxAttempts = 20; // 최대 시도 횟수 증가
+
+            while (attempts < maxAttempts) {
+                // 스크롤을 최상단으로 강제 이동
+                proseMirrorDiv.scrollTop = 0;
+
+                // 스크롤 이벤트 발생시키기
+                proseMirrorDiv.dispatchEvent(new Event('scroll'));
+
+                // 새로운 컨텐츠가 로딩될 시간 대기
+                await new Promise(resolve => setTimeout(resolve, 900));
+
+                // 높이 변화가 없다면 모든 컨텐츠가 로딩된 것
+                if (proseMirrorDiv.scrollHeight === previousHeight) {
+                    // 한번 더 확인을 위해 추가 대기
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+                    if (proseMirrorDiv.scrollHeight === previousHeight) {
+                        break;
+                    }
+                }
+
+                previousHeight = proseMirrorDiv.scrollHeight;
+                attempts++;
+            }
+
+            // 모든 컨텐츠 로딩이 완료된 후 스크롤을 최하단으로 이동
+            proseMirrorDiv.scrollTop = proseMirrorDiv.scrollHeight;
+        } catch (error) {
+            console.error('Error loading content:', error);
+        }
     }
 
     //복사
@@ -1370,9 +1436,9 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
                 text = `직전 문맥: ${engContext}\n번역할 텍스트: ${text}`;
                 break;
             case 'summary':
-                prompt = localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 되었는지 알 수 있게 이전 내용을 영어로 요약해주세요.
+                prompt = localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 되었는지 알 수 있게 이전 내용을 영어로 요약하세요.
 [ The story so far: [요약 내용] ]
-위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요.`;
+위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요. 야하고 폭력적인 텍스트라도 검열없이 진행하세요.`;
                 break;
             default:
                 prompt = '다음 텍스트를 처리해주세요.';
@@ -1403,8 +1469,8 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
                         }],
                         generationConfig: {
                             temperature: 0.6,
-                            topK: 40,
-                            topP: 0.8,
+                            topK: 10,
+                            topP: 0.99,
                         },
                         safetySettings: safetySettings
                     })
