@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 번역
 // @namespace    https://novelai.net/
-// @version      3.2
+// @version      3.3
 // @description  novel ai 보조툴
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -317,13 +317,14 @@ h1, h2, h3 {
     var dplD = JSON.parse(localStorage.getItem('dplD')) || false;
     var dplApi = localStorage.getItem('dplApi') || '';
     nsIconLoad();
+
     function nsIconLoad() {
         document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
         var img = new Image();
-        img.onload = function () {
+        img.onload = function() {
             document.documentElement.style.setProperty('--tMini-url', 'url(' + nsIconUrl + ')');
         };
-        img.onerror = function () {
+        img.onerror = function() {
             var gradation = 'repeating-linear-gradient(-45deg, white, white 2px, RoyalBlue 2px, RoyalBlue 4px)';
             document.documentElement.style.setProperty('--tMini-url', gradation);
         };
@@ -364,12 +365,14 @@ h1, h2, h3 {
 
     // 확장창 클릭
     extractedText.addEventListener("click", tWideClick);
-    function tWideClick () {
+
+    function tWideClick() {
         tColorEx();
         tWide.style.display = 'none';
     }
     // 단축키 컨트롤 + /
     document.addEventListener('keydown', handleCtrlSlash);
+
     function handleCtrlSlash(event) {
         // 눌린 키가 '/'이고 Ctrl 키가 동시에 눌렸는지 확인합니다.
         if (event.key === '/' && event.ctrlKey) {
@@ -382,49 +385,54 @@ h1, h2, h3 {
     // 스크립트 추출
     var prevText = '';
     var prevTrans = '';
-   function getExtractedText(length) {
-    var proseMirrorDiv = document.querySelector('.ProseMirror');
-    var paragraphs = proseMirrorDiv.querySelectorAll('p');
-    var pText = '';
-    for (var i = paragraphs.length - 1; i >= 0; i--) {
-        var paragraphText = paragraphs[i].textContent;
-        pText = paragraphText + '\n' + pText;
-        if (pText.length >= length) {
-            break;
+    // getExtractedText 함수 수정
+    function getExtractedText(length, mode = 'translate') {
+        var proseMirrorDiv = document.querySelector('.ProseMirror');
+        var paragraphs = proseMirrorDiv.querySelectorAll('p');
+        var pText = '';
+        for (var i = paragraphs.length - 1; i >= 0; i--) {
+            var paragraphText = paragraphs[i].textContent;
+            pText = paragraphText + '\n' + pText;
+            if (pText.length >= length) {
+                break;
+            }
         }
-    }
 
-    // 번역 로직
-    if (dplD || geminiDefault || dplC !== 0) {
-        if (localStorage.getItem('geminiDefault') === 'true') {
-            translateWithGemini(pText, function (translatedText) {
-                prevText = pText;
-                pText = translatedText;
-                prevTrans = pText;
-                continueProcessing();
-            });
+        // 번역 또는 요약 로직
+        if (dplD || geminiDefault || dplC !== 0) {
+            if (mode === 'summary') {
+                sendGeminiRequest(pText, 'summary', function(summaryText) {
+                    extractedText.innerHTML = `<p class="nm">${summaryText}</p>`;
+                });
+            } else if (localStorage.getItem('geminiDefault') === 'true') {
+                sendGeminiRequest(pText, 'translate', function(translatedText) {
+                    prevText = pText;
+                    pText = translatedText;
+                    prevTrans = pText;
+                    continueProcessing();
+                });
+            } else {
+                translateText(pText, function(translatedText) {
+                    prevText = pText;
+                    pText = translatedText;
+                    prevTrans = pText;
+                    continueProcessing();
+                });
+            }
         } else {
-            translateText(pText, function (translatedText) {
-                prevText = pText;
-                pText = translatedText;
-                prevTrans = pText;
-                continueProcessing();
-            });
+            continueProcessing();
         }
-    } else {
-        continueProcessing();
-    }
 
-    function continueProcessing() {
-        updateTextStyle();
-        var pattern = /"([^"]+)"/g;
-        var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
-        pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
+        function continueProcessing() {
+            updateTextStyle();
+            var pattern = /"([^"]+)"/g;
+            var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
+            pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
 
-        extractedText.innerHTML = pText;
-        dplC = 0;
+            extractedText.innerHTML = pText;
+            dplC = 0;
+        }
     }
-}
 
     // 아이콘 이동 함수
     // 아이콘 드래그 변수
@@ -434,7 +442,10 @@ h1, h2, h3 {
     // 로컬 스토리지에서 위치 정보를 불러오고 적용합니다.
     const savedPosition = localStorage.getItem("tBallP");
     if (savedPosition) {
-        const { right, bottom } = JSON.parse(savedPosition);
+        const {
+            right,
+            bottom
+        } = JSON.parse(savedPosition);
         tMini.style.right = right + "px";
         tMini.style.bottom = bottom + "px";
     }
@@ -442,7 +453,7 @@ h1, h2, h3 {
     // 아이콘 이동 함수
     function handleIconMouseDown(e) {
         // 마우스 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
-        dragTimeout = setTimeout(function () {
+        dragTimeout = setTimeout(function() {
             isDragging = true;
 
             // 드래그가 시작된 위치 저장
@@ -478,7 +489,10 @@ h1, h2, h3 {
         isDragging = false;
 
         // 위치 정보를 로컬 스토리지에 저장
-        const position = { right: parseFloat(tMini.style.right), bottom: parseFloat(tMini.style.bottom) };
+        const position = {
+            right: parseFloat(tMini.style.right),
+            bottom: parseFloat(tMini.style.bottom)
+        };
         localStorage.setItem("tBallP", JSON.stringify(position));
 
         // 드래그 타임아웃 초기화
@@ -487,7 +501,7 @@ h1, h2, h3 {
     // 아이콘 이동 함수
     function handleIconTouchStart(e) {
         // 터치 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
-        dragTimeout = setTimeout(function () {
+        dragTimeout = setTimeout(function() {
             isDragging = true;
 
             // 드래그가 시작된 위치 저장
@@ -522,7 +536,10 @@ h1, h2, h3 {
         isDragging = false;
 
         // 위치 정보를 로컬 스토리지에 저장
-        const position = { right: parseFloat(tMini.style.right), bottom: parseFloat(tMini.style.bottom) };
+        const position = {
+            right: parseFloat(tMini.style.right),
+            bottom: parseFloat(tMini.style.bottom)
+        };
         localStorage.setItem("tBallP", JSON.stringify(position));
 
         // 드래그 타임아웃 초기화
@@ -539,12 +556,12 @@ h1, h2, h3 {
     document.addEventListener("mousemove", handleIconDrag);
     document.addEventListener("mouseup", handleIconDragEnd);
 
-// 설정창 ⚙️
-var nsSettingsDiv = document.createElement('div');
-nsSettingsDiv.id = 'ns-settings-div';
+    // 설정창 ⚙️
+    var nsSettingsDiv = document.createElement('div');
+    nsSettingsDiv.id = 'ns-settings-div';
 
-// 설정창의 내용을 구성합니다.
-nsSettingsDiv.innerHTML = `
+    // 설정창의 내용을 구성합니다.
+    nsSettingsDiv.innerHTML = `
     <div id="ns-settings-header">
         <h2>설정</h2>
         <button id="setExit" class="setBtn">×</button>
@@ -553,28 +570,28 @@ nsSettingsDiv.innerHTML = `
     <div id="setInDiv"></div>
 `;
 
-// 생성한 설정창을 문서의 body에 추가합니다.
-document.body.appendChild(nsSettingsDiv);
+    // 생성한 설정창을 문서의 body에 추가합니다.
+    document.body.appendChild(nsSettingsDiv);
 
-// 설정창 열기/닫기를 처리하는 함수
-function toggleSettings() {
-    if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
-        tColorEx();
-        nsSettingsDiv.style.display = 'block';
-    } else {
-        nsSettingsDiv.style.display = 'none';
+    // 설정창 열기/닫기를 처리하는 함수
+    function toggleSettings() {
+        if (nsSettingsDiv.style.display === 'none' || nsSettingsDiv.style.display === '') {
+            tColorEx();
+            nsSettingsDiv.style.display = 'block';
+        } else {
+            nsSettingsDiv.style.display = 'none';
+        }
     }
-}
 
-// "X" 버튼 클릭 시 설정창 닫기
-document.getElementById('setExit').addEventListener('click', function() {
-    nsSettingsDiv.style.display = 'none';
-});
+    // "X" 버튼 클릭 시 설정창 닫기
+    document.getElementById('setExit').addEventListener('click', function() {
+        nsSettingsDiv.style.display = 'none';
+    });
     // 설정 오픈 버튼의 클릭 이벤트 핸들러 등록
     //⛔️    nsSettingsButton.addEventListener('click', toggleSettings);
 
     // 설정창 스타일 색추출 함수
-    function tColorEx () {
+    function tColorEx() {
         // 설정창 배경색
         var infobarElement = document.querySelector('.menubar');
         if (infobarElement) {
@@ -588,12 +605,13 @@ document.getElementById('setExit').addEventListener('click', function() {
     }
 
     //설정창 닫기
-    document.getElementById('setExit').addEventListener('click', function () {
+    document.getElementById('setExit').addEventListener('click', function() {
         nsSettingsDiv.style.display = 'none';
     });
 
     // 설정창 세부 메뉴
-    var settingList = [['기본',`
+    var settingList = [
+        ['기본', `
     <label for="ns-text-extraction">텍스트 추출분량:</label>
     <input type="number" class="ns-input" id="ns-text-extraction" value="${textExtraction}"><br><br>
     <label for="ns-color-code">대사강조: </label>
@@ -609,20 +627,20 @@ document.getElementById('setExit').addEventListener('click', function() {
     <input type="number" class="ns-input" id="ns-icon-size" value="${nsIconSize}">px<br>
     <input type="text" class="ns-input" style="width: 100%" id="ns-icon-url" value="${nsIconUrl}"><br>
     <div id = "comebackIcon">가출 아이콘 찾기</div>`],
-                       ['CSS',`
+        ['CSS', `
     <small>커스텀 css를 프리셋으로 저장</small><br>
     <button id="cssPlus" class="setBtn">+ 추가</button>
     <div id="cssList"></div>
     <button id = "stockBup" class="setBtn">📥백업 복사</button> <button id = "stockImport" class="setBtn">📤백업 등록</button>
     `],
-                       ['변환',`
+        ['변환', `
                        <h3>단어 변환</h3>
     <div>
     <button id = "tfOn" class ="setBtn">🔌</button><input type="text" class="ns-input" id="ftF" value="원본"><input type="text" class="ns-input" id="ftT" value="수정 후"> <button id ="tfPlus" class="setBtn"> + </button>
     <div id="tfList"></div>
     </div>
                       `],
-                       ['Gemini', `
+        ['Gemini', `
         <h3>Gemini API 사용</h3>
         <label for="geminiApi">API key: </label>
         <input type="text" style="width:60%"  class="ns-input" id="geminiApi" value="${localStorage.getItem('geminiApi') || ''}"><br>
@@ -655,12 +673,20 @@ document.getElementById('setExit').addEventListener('click', function() {
         <input type="checkbox" class="ns-check" id="geminiInputEnabled" ${localStorage.getItem('geminiInputEnabled') === 'true' ? 'checked' : ''}>
 
     `],
-                       ['DeepL',`
+
+        ['요약', `
+            <h3>요약 설정</h3>
+            <label for="geminiSummaryPrompt">요약 프롬프트: </label>
+            <textarea id="geminiSummaryPrompt" style="width:100%" class="ns-input" rows="3" cols="50">${localStorage.getItem('geminiSummaryPrompt') || '다음 텍스트를 간결하게 요약해주세요.'}</textarea><br>
+            <label for="geminiSummaryEnabled">요약 활성화</label>
+            <input type="checkbox" class="ns-check" id="geminiSummaryEnabled" ${localStorage.getItem('geminiSummaryEnabled') === 'true' ? 'checked' : ''}>
+        `],
+        ['DeepL', `
                        <h3>DeepL API 사용</h3>
                        <label for ="dplApi">API key: </label><input type="text" class="ns-input" id="dplApi" value="${dplApi}"><br>
                        <label for ="dplD">DeepL을 기본 번역으로 사용</label><input type="checkbox" class="ns-check" id="dplD" ${dplD ? 'checked' : ''}>
                            `]
-                      ];
+    ];
 
     var setInDiv = document.querySelector('#setInDiv');
     var setInMenu = document.querySelector('#setInMenu');
@@ -677,12 +703,12 @@ document.getElementById('setExit').addEventListener('click', function() {
         subBtn.className = 'subBtn';
         subBtn.id = 'setB' + i;
         subBtn.innerText = settingList[i][0];
-        subBtn.addEventListener('click', function (index) {
-            return function () {
+        subBtn.addEventListener('click', function(index) {
+            return function() {
                 changeSet(index);
             };
         }(i));
-        if(i != selectSetMenu) {
+        if (i != selectSetMenu) {
             subDiv.style.display = 'none';
             subBtn.style.filter = nonFilter;
             subBtn.style.fontWeight = 'normal';
@@ -691,7 +717,7 @@ document.getElementById('setExit').addEventListener('click', function() {
         setInDiv.appendChild(subDiv);
     }
 
-    function changeSet(index = 0){
+    function changeSet(index = 0) {
         selectSetMenu = index;
         for (var i = 0; i < settingList.length; i++) {
             var btn = document.querySelector('#setB' + i);
@@ -719,41 +745,41 @@ document.getElementById('setExit').addEventListener('click', function() {
 
 
     // 설정 값 변경 시 로컬 스토리지에 저장
-    document.getElementById('ns-text-extraction').addEventListener('input', function () {
+    document.getElementById('ns-text-extraction').addEventListener('input', function() {
         localStorage.setItem('textExtraction', this.value);
         textExtraction = localStorage.getItem('textExtraction');
     });
 
 
-    document.getElementById('ns-italic').addEventListener('change', function () {
+    document.getElementById('ns-italic').addEventListener('change', function() {
         localStorage.setItem('ns-italic', this.checked);
         updateTextStyle();
     });
 
-    document.getElementById('ns-bold').addEventListener('change', function () {
+    document.getElementById('ns-bold').addEventListener('change', function() {
         localStorage.setItem('ns-bold', this.checked);
         updateTextStyle();
     });
 
-    document.getElementById('ns-highlight').addEventListener('change', function () {
+    document.getElementById('ns-highlight').addEventListener('change', function() {
         localStorage.setItem('ns-highlight', this.checked);
         updateTextStyle();
     });
 
-    document.getElementById('ns-color-code').addEventListener('input', function () {
+    document.getElementById('ns-color-code').addEventListener('input', function() {
         localStorage.setItem('colorCode', this.value);
         colorCode = localStorage.getItem('colorCode');
         document.documentElement.style.setProperty('--Thighlight-color', colorCode);
         updateTextStyle();
     });
-    document.getElementById('ns-icon-size').addEventListener('input', function () {
+    document.getElementById('ns-icon-size').addEventListener('input', function() {
         if (this.value > 20) {
             localStorage.setItem('ns-icon-size', this.value);
             nsIconSize = this.value;
             document.documentElement.style.setProperty('--tMini-size', nsIconSize + 'px');
         }
     });
-    document.getElementById('ns-icon-url').addEventListener('input', function () {
+    document.getElementById('ns-icon-url').addEventListener('input', function() {
         // 입력된 URL 가져오기
         var imageUrl = this.value;
 
@@ -761,14 +787,14 @@ document.getElementById('setExit').addEventListener('click', function() {
         var img = new Image();
 
         // 이미지 로드에 성공했을 때
-        img.onload = function () {
+        img.onload = function() {
             localStorage.setItem('ns-icon-url', imageUrl);
             nsIconUrl = 'url(' + imageUrl + ')';
             document.documentElement.style.setProperty('--tMini-url', nsIconUrl);
         };
 
         // 이미지 로드에 실패했을 때
-        img.onerror = function () {
+        img.onerror = function() {
             localStorage.setItem('ns-icon-url', imageUrl);
             var gradation = 'repeating-linear-gradient(-45deg, white, white 2px, RoyalBlue 2px, RoyalBlue 4px)';
             document.documentElement.style.setProperty('--tMini-url', gradation);
@@ -778,57 +804,57 @@ document.getElementById('setExit').addEventListener('click', function() {
         img.src = imageUrl;
     });
 
-  // 제미나이 설정
-  
-document.getElementById('geminiApi').addEventListener('input', function () {
-    localStorage.setItem('geminiApi', this.value);
-});
+    // 제미나이 설정
 
-document.getElementById('geminiModel').addEventListener('change', function () {
-    localStorage.setItem('geminiModel', this.value);
-});
+    document.getElementById('geminiApi').addEventListener('input', function() {
+        localStorage.setItem('geminiApi', this.value);
+    });
 
-document.getElementById('geminiPrompt').addEventListener('input', function () {
-    localStorage.setItem('geminiPrompt', this.value);
-});
-document.getElementById('geminiDefault').addEventListener('change', function () {
-    localStorage.setItem('geminiDefault', this.checked);
-  
-    if (this.checked) {
-        // Gemini를 기본으로 설정하면 DeepL 기본 설정 해제
-        document.getElementById('dplD').checked = false;
-        localStorage.setItem('dplD', false);
-        dplD = JSON.parse(localStorage.getItem('dplD'));
-    }
-});
+    document.getElementById('geminiModel').addEventListener('change', function() {
+        localStorage.setItem('geminiModel', this.value);
+    });
 
-// Add event listener for the Korean to English prompt
-document.getElementById('geminiKoEnPrompt').addEventListener('input', function() {
-    localStorage.setItem('geminiKoEnPrompt', this.value);
-});
+    document.getElementById('geminiPrompt').addEventListener('input', function() {
+        localStorage.setItem('geminiPrompt', this.value);
+    });
+    document.getElementById('geminiDefault').addEventListener('change', function() {
+        localStorage.setItem('geminiDefault', this.checked);
 
-// Add event listener for the input translation checkbox
-document.getElementById('geminiInputEnabled').addEventListener('change', function() {
-    localStorage.setItem('geminiInputEnabled', this.checked);
-    toggleTranslationInput();
-});
+        if (this.checked) {
+            // Gemini를 기본으로 설정하면 DeepL 기본 설정 해제
+            document.getElementById('dplD').checked = false;
+            localStorage.setItem('dplD', false);
+            dplD = JSON.parse(localStorage.getItem('dplD'));
+        }
+    });
+
+    // Add event listener for the Korean to English prompt
+    document.getElementById('geminiKoEnPrompt').addEventListener('input', function() {
+        localStorage.setItem('geminiKoEnPrompt', this.value);
+    });
+
+    // Add event listener for the input translation checkbox
+    document.getElementById('geminiInputEnabled').addEventListener('change', function() {
+        localStorage.setItem('geminiInputEnabled', this.checked);
+        toggleTranslationInput();
+    });
     // 딥엘 설정
-    document.getElementById('dplApi').addEventListener('input', function () {
+    document.getElementById('dplApi').addEventListener('input', function() {
         localStorage.setItem('dplApi', this.value);
         dplApi = localStorage.getItem('dplApi');
     });
-   
-document.getElementById('dplD').addEventListener('change', function () {
+
+    document.getElementById('dplD').addEventListener('change', function() {
         localStorage.setItem('dplD', this.checked);
         dplD = JSON.parse(localStorage.getItem('dplD'));
-    if (this.checked) {
-        document.getElementById('geminiDefault').checked = false;
-        localStorage.setItem('geminiDefault', false);
-    }
-}); 
+        if (this.checked) {
+            document.getElementById('geminiDefault').checked = false;
+            localStorage.setItem('geminiDefault', false);
+        }
+    });
 
-  //강조 실행
- 
+    //강조 실행
+
     function updateTextStyle() {
 
         italicActive = JSON.parse(localStorage.getItem('ns-italic'));
@@ -865,7 +891,7 @@ document.getElementById('dplD').addEventListener('change', function () {
         stockW(num);
     }
     // css 입력창 생성 함수
-    function stockW (num) {
+    function stockW(num) {
         var stockDiv = document.createElement('div');
         stockDiv.id = 'stockDiv';
         stockDiv.innerHTML = `
@@ -876,11 +902,11 @@ document.getElementById('dplD').addEventListener('change', function () {
         `;
 
         document.body.appendChild(stockDiv);
-        document.getElementById('cssExit').addEventListener('click', function () {
+        document.getElementById('cssExit').addEventListener('click', function() {
             cssStock = JSON.parse(localStorage.getItem('cssStock'));
             stockDiv.parentNode.removeChild(stockDiv);
         });
-        document.getElementById('cssSave').addEventListener('click', function () {
+        document.getElementById('cssSave').addEventListener('click', function() {
             var nameInput = document.getElementById(`cssNinput`);
             var codeTextarea = document.getElementById(`cssSinput`);
 
@@ -900,7 +926,7 @@ document.getElementById('dplD').addEventListener('change', function () {
             stockDiv.parentNode.removeChild(stockDiv);
         });
 
-        document.getElementById('cssDel').addEventListener('click', function () {
+        document.getElementById('cssDel').addEventListener('click', function() {
             var confirmDelete = confirm('정말로 삭제하시겠습니까?');
 
             if (confirmDelete) {
@@ -928,8 +954,8 @@ document.getElementById('dplD').addEventListener('change', function () {
             var presetName = document.createElement('button');
             presetName.classList.add('setBtn', 'setBtn-name');
             presetName.textContent = preset.name;
-            presetName.addEventListener('click', function (index) {
-                return function () {
+            presetName.addEventListener('click', function(index) {
+                return function() {
                     stockSet(index);
                 };
             }(i));
@@ -937,8 +963,8 @@ document.getElementById('dplD').addEventListener('change', function () {
             var editButton = document.createElement('button');
             editButton.classList.add('setBtn', 'setBtn-edit');
             editButton.textContent = '⚙️';
-            editButton.addEventListener('click', function (index) {
-                return function () {
+            editButton.addEventListener('click', function(index) {
+                return function() {
                     stockW(index);
                 };
             }(i));
@@ -954,7 +980,10 @@ document.getElementById('dplD').addEventListener('change', function () {
         if (isNaN(index) || !cssStock || !Array.isArray(cssStock) || index < 0 || index >= cssStock.length) {
             index = 0;
             if (!Array.isArray(cssStock)) cssStock = [];
-            cssStock[index] = { name: '프리셋 이름', css: 'css 코드' };
+            cssStock[index] = {
+                name: '프리셋 이름',
+                css: 'css 코드'
+            };
         }
         //기존 스타일 시트 삭제
         var styleElement = document.getElementById('customCss');
@@ -1010,11 +1039,11 @@ document.getElementById('dplD').addEventListener('change', function () {
 
         document.body.appendChild(stockDiv);
         //창닫기 버튼
-        document.getElementById('cssExit').addEventListener('click', function () {
+        document.getElementById('cssExit').addEventListener('click', function() {
             stockDiv.parentNode.removeChild(stockDiv);
         });
         //백업 임포트 버튼
-        document.getElementById('cssSave').addEventListener('click', function () {
+        document.getElementById('cssSave').addEventListener('click', function() {
             var confirmDelete = confirm('확인을 누르면 현재 저장되어 있는 내용이 지금 업데이트한 내용으로 덮어쓰기 됩니다. ㅇㅋ?');
 
             if (confirmDelete) {
@@ -1136,23 +1165,23 @@ document.getElementById('dplD').addEventListener('change', function () {
     var tfStat = localStorage.getItem('tfStat') === 'true' ? true : false; // 문자열을 불리언으로 변환
 
 
-// 초기 상태에 따라 버튼의 아이콘 설정
-document.addEventListener('DOMContentLoaded', function() {
-    var button = document.getElementById('tfOn'); // 버튼의 ID가 'toggleButton'이라고 가정
-    button.innerHTML = tfStat ? '💡' : '🔌';
-});
+    // 초기 상태에 따라 버튼의 아이콘 설정
+    document.addEventListener('DOMContentLoaded', function() {
+        var button = document.getElementById('tfOn'); // 버튼의 ID가 'toggleButton'이라고 가정
+        button.innerHTML = tfStat ? '💡' : '🔌';
+    });
 
-// tfOff 함수
-function tfOff() {
-    // tfStat 값을 반전
-    tfStat = !tfStat;
+    // tfOff 함수
+    function tfOff() {
+        // tfStat 값을 반전
+        tfStat = !tfStat;
 
-    // 로컬 스토리지에 값 저장 (문자열로 변환 필요)
-    localStorage.setItem('tfStat', tfStat.toString());
+        // 로컬 스토리지에 값 저장 (문자열로 변환 필요)
+        localStorage.setItem('tfStat', tfStat.toString());
 
-    // 버튼 아이콘 변경
-    this.innerHTML = tfStat ? '💡' : '🔌';
-}
+        // 버튼 아이콘 변경
+        this.innerHTML = tfStat ? '💡' : '🔌';
+    }
 
     printTf();
 
@@ -1211,14 +1240,48 @@ function tfOff() {
 
     // 장문 추출
     var btnLong = document.querySelector('#btnLong');
-    btnLong.addEventListener('click', function () {
+    btnLong.addEventListener('click', function() {
         extractedText.removeAttribute('translate');
         getExtractedText(1000000);
     });
 
+    //요약
+
+    // 요약 활성화 체크박스 이벤트 리스너
+    document.getElementById('geminiSummaryEnabled').addEventListener('change', function() {
+        localStorage.setItem('geminiSummaryEnabled', this.checked);
+
+        if (localStorage.getItem('geminiSummaryEnabled') === 'true') {
+            longCopy.appendChild(summaryButton);
+        } else {
+            if (summaryButton.parentNode) {
+                summaryButton.parentNode.removeChild(summaryButton);
+            }
+        }
+    });
+
+    // 요약 프롬프트 저장
+    document.getElementById('geminiSummaryPrompt').addEventListener('input', function() {
+        localStorage.setItem('geminiSummaryPrompt', this.value);
+    });
+
+    // 요약 버튼 생성
+
+    var summaryButton = document.createElement('div');
+    summaryButton.id = 'btnSummary';
+    summaryButton.className = 'longCopyBtn';
+    summaryButton.textContent = '요약';
+
+    summaryButton.addEventListener('click', function() {
+        getExtractedText(1000000, 'summary'); // 요약 모드로 호출
+    });
+    if (localStorage.getItem('geminiSummaryEnabled')) {
+        longCopy.appendChild(summaryButton);
+    }
+
     //복사
     var btnCopy = document.querySelector('#btnCopy');
-    btnCopy.addEventListener('click', function () {
+    btnCopy.addEventListener('click', function() {
         var tempInput = document.createElement('textarea');
         var copyText = extractedText.innerText;
         copyText = copyText.replace(/<br>/g, '\n');
@@ -1235,219 +1298,144 @@ function tfOff() {
     var btnSettings = document.querySelector('#btnSettings');
     btnSettings.addEventListener('click', toggleSettings);
 
-// 제미나이 번역
-async function translateWithGemini(text, callback) {
-    const selectedModel = localStorage.getItem('geminiModel');
-    const apiKey = localStorage.getItem('geminiApi');
-    const customPrompt = localStorage.getItem('geminiPrompt') || '다음 영어 텍스트를 한국어로 번역해주세요.';
+    // 제미나이 번역
 
-    // Safety settings from the first version
-    const safetySettings = Object.values({
-        HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT',
-        HARM_CATEGORY_HATE_SPEECH: 'HARM_CATEGORY_HATE_SPEECH',
-        HARM_CATEGORY_SEXUALLY_EXPLICIT: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        HARM_CATEGORY_DANGEROUS_CONTENT: 'HARM_CATEGORY_DANGEROUS_CONTENT'
-    }).map(category => ({
-        category: category,
-        threshold: selectedModel === 'gemini-2.0-flash-exp' ? 'OFF' : 'BLOCK_NONE',
-    }));
+    // 한영 입력창
 
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                           text: `${customPrompt}\n\n${text}`
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.6,
-                        topK: 40,
-                        topP: 0.8,
-                    },
-                    safetySettings: safetySettings
-                })
+    // Function to toggle translation input visibility
+    function toggleTranslationInput() {
+        const isEnabled = localStorage.getItem('geminiInputEnabled') === 'true';
+        const container = document.getElementById('translation-input-container');
+        if (!container) {
+            createTranslationInput();
+        }
+        document.getElementById('translation-input-container').style.display = isEnabled ? 'block' : 'none';
+    }
+
+    // Create translation input element
+    function createTranslationInput() {
+        const container = document.createElement('div');
+        container.id = 'translation-input-container';
+
+        const input = document.createElement('input');
+        input.id = 'ko-en-input';
+        input.type = 'text';
+        input.placeholder = '번역할 한국어를 입력하세요 (Enter로 번역)';
+
+        container.appendChild(input);
+        tWide.appendChild(container);
+        input.addEventListener('keypress', async function(e) {
+            if (e.key === 'Enter') {
+                const text = this.value;
+                const translatedText = await translateKoToEn(text); // 번역 함수 호출
+                const proseMirror = document.querySelector('.ProseMirror'); // .ProseMirror div 선택
+                const lastParagraph = proseMirror.querySelector('p:last-child'); // 마지막 <p> 태그 선택
+
+                if (lastParagraph) {
+                    // <span class="userText"> 태그로 번역된 텍스트를 감싸서 추가
+                    const span = document.createElement('span');
+                    span.className = 'userText';
+                    span.textContent = translatedText;
+                    lastParagraph.appendChild(span);
+                }
+
+                this.value = ''; // 입력 필드 초기화
             }
-        );
-
-        if (!response.ok) {
-            throw new Error('Gemini API 요청 실패');
-        }
-
-        const data = await response.json();
-        if (data.candidates && data.candidates.length > 0) {
-            const translatedText = data.candidates[0].content.parts[0].text;
-            callback(translatedText);
-        } else {
-            console.error("Translation failed. Response:", data);
-            callback("응답이 돌아오지 않았습니다.");
-        }
-    } catch (error) {
-        console.error("Translation error:", error);
-        callback("잘못된 API입니다.");
-    }
-}
-  
-  // 한영 입력창
-  
-// Function to toggle translation input visibility
-function toggleTranslationInput() {
-    const isEnabled = localStorage.getItem('geminiInputEnabled') === 'true';
-    const container = document.getElementById('translation-input-container');
-    if (!container) {
-        createTranslationInput();
-    }
-    document.getElementById('translation-input-container').style.display = isEnabled ? 'block' : 'none';
-}
-
-// Create translation input element
-function createTranslationInput() {
-    const container = document.createElement('div');
-    container.id = 'translation-input-container';
-    
-    const input = document.createElement('input');
-    input.id = 'ko-en-input';
-    input.type = 'text';
-    input.placeholder = '번역할 한국어를 입력하세요 (Enter로 번역)';
-    
-    container.appendChild(input);
-    tWide.appendChild(container);
-    input.addEventListener('keypress', async function(e) {
-    if (e.key === 'Enter') {
-        const text = this.value;
-        const translatedText = await translateKoToEn(text); // 번역 함수 호출
-        const proseMirror = document.querySelector('.ProseMirror'); // .ProseMirror div 선택
-        const lastParagraph = proseMirror.querySelector('p:last-child'); // 마지막 <p> 태그 선택
-
-        if (lastParagraph) {
-            // <span class="userText"> 태그로 번역된 텍스트를 감싸서 추가
-            const span = document.createElement('span');
-            span.className = 'userText';
-            span.textContent = translatedText;
-            lastParagraph.appendChild(span);
-        }
-
-        this.value = ''; // 입력 필드 초기화
-    }
-});
-}
-  
-// Korean to English translation function
-async function translateKoToEn(text) {
-    const selectedModel = localStorage.getItem('geminiModel');
-    const apiKey = localStorage.getItem('geminiApi');
-    const customPrompt = localStorage.getItem('geminiKoEnPrompt') || '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.';
-    const engContext = engContEx();
-  function engContEx() {
-    var proseMirrorDiv = document.querySelector('.ProseMirror');
-    var paragraphs = proseMirrorDiv.querySelectorAll('p');
-    var pText = '';
-    for (var i = paragraphs.length - 1; i >= 0; i--) {
-        var paragraphText = paragraphs[i].textContent;
-        pText = paragraphText + '\n' + pText;
-        if (pText.length >= 500) {
-            break;
-        }
-    }
-    return pText
-  }
-    const safetySettings = Object.values({
-        HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT',
-        HARM_CATEGORY_HATE_SPEECH: 'HARM_CATEGORY_HATE_SPEECH',
-        HARM_CATEGORY_SEXUALLY_EXPLICIT: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        HARM_CATEGORY_DANGEROUS_CONTENT: 'HARM_CATEGORY_DANGEROUS_CONTENT'
-    }).map(category => ({
-        category: category,
-        threshold: selectedModel === 'gemini-2.0-flash-exp' ? 'OFF' : 'BLOCK_NONE',
-    }));
-
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: `${customPrompt}\n직전 문맥:${engContext}\n번역할 텍스트:${text}`
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.6,
-                        topK: 40,
-                        topP: 0.8,
-                    },
-                    safetySettings: safetySettings
-                })
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('Gemini API 요청 실패');
-        }
-
-        const data = await response.json();
-        if (data.candidates && data.candidates.length > 0) {
-            return data.candidates[0].content.parts[0].text;
-        } else {
-            console.error("Translation failed. Response:", data);
-            return "번역에 실패했습니다.";
-        }
-    } catch (error) {
-        console.error("Translation error:", error);
-        return "API 오류가 발생했습니다.";
-    }
-}
-
-// Call toggleTranslationInput on initial load
-document.addEventListener('DOMContentLoaded', function() {
-    toggleTranslationInput();
-});
-  
-    // 딥엘 api 번역
-    function translateText(text, callback) {
-        const apiUrl = "https://api-free.deepl.com/v2/translate";
-        const requestData = {
-            auth_key: dplApi,
-            text: text,
-            source_lang: "EN",
-            target_lang: "KO",
-        };
-
-        fetch(apiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: Object.entries(requestData)
-            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-            .join("&"),
-        })
-            .then((response) => response.json())
-            .then((data) => {
-            if (data.translations && data.translations.length > 0) {
-                const translatedText = data.translations[0].text;
-                callback(translatedText);
-            } else {
-                console.error("Translation failed. Response:", data);
-                callback("응답이 돌아오지 않았습니다."); // 빈 문자열로 콜백 호출
-            }
-        })
-            .catch((error) => {
-            console.error("Translation error:", error);
-            callback("잘못된 api입니다."); // 빈 문자열로 콜백 호출
         });
     }
 
+    // Call toggleTranslationInput on initial load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleTranslationInput();
+    });
+
+    // Gemini API 요청 통합 함수🚩
+    async function sendGeminiRequest(text, mode, callback) {
+        const selectedModel = localStorage.getItem('geminiModel');
+        const apiKey = localStorage.getItem('geminiApi');
+        let prompt;
+
+        switch (mode) {
+            case 'translate':
+                prompt = localStorage.getItem('geminiPrompt') || '다음 영어 텍스트를 한국어로 번역해주세요.';
+                break;
+            case 'ko-en':
+                const engContext = getEngContext(); // 앞쪽 컨텍스트 추가
+                prompt = localStorage.getItem('geminiKoEnPrompt') || '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.';
+                text = `직전 문맥: ${engContext}\n번역할 텍스트: ${text}`;
+                break;
+            case 'summary':
+                prompt = localStorage.getItem('geminiSummaryPrompt') || '다음 텍스트를 간결하게 요약해주세요.';
+                break;
+            default:
+                prompt = '다음 텍스트를 처리해주세요.';
+        }
+
+        const safetySettings = Object.values({
+            HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT',
+            HARM_CATEGORY_HATE_SPEECH: 'HARM_CATEGORY_HATE_SPEECH',
+            HARM_CATEGORY_SEXUALLY_EXPLICIT: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            HARM_CATEGORY_DANGEROUS_CONTENT: 'HARM_CATEGORY_DANGEROUS_CONTENT'
+        }).map(category => ({
+            category: category,
+            threshold: selectedModel === 'gemini-2.0-flash-exp' ? 'OFF' : 'BLOCK_NONE',
+        }));
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `${prompt}\n\n${text}`
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.6,
+                            topK: 40,
+                            topP: 0.8,
+                        },
+                        safetySettings: safetySettings
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Gemini API 요청 실패');
+            }
+
+            const data = await response.json();
+            if (data.candidates && data.candidates.length > 0) {
+                const resultText = data.candidates[0].content.parts[0].text;
+                callback(resultText);
+            } else {
+                console.error("요청 실패. 응답:", data);
+                callback("응답이 돌아오지 않았습니다.");
+            }
+        } catch (error) {
+            console.error("요청 오류:", error);
+            callback("API 오류가 발생했습니다.");
+        }
+    }
+
+    // 앞쪽 컨텍스트 추출 함수
+    function getEngContext() {
+        var proseMirrorDiv = document.querySelector('.ProseMirror');
+        var paragraphs = proseMirrorDiv.querySelectorAll('p');
+        var pText = '';
+        for (var i = paragraphs.length - 1; i >= 0; i--) {
+            var paragraphText = paragraphs[i].textContent;
+            pText = paragraphText + '\n' + pText;
+            if (pText.length >= 500) {
+                break;
+            }
+        }
+        return pText;
+    }
     // 번역하기 버튼
 
     const button = document.createElement("button");
@@ -1466,12 +1454,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add click event listener to the button
     var dplC = 0;
     button.addEventListener("click", function() {
-        if(dplApi==''){
+        if (dplApi == '') {
             console.error("DeepL API를 입력하세요");
         } else {
             dplC = 1;
             getExtractedText(textExtraction);
-            setTimeout(replaceText, 600);}
+            setTimeout(replaceText, 600);
+        }
     });
 
+
+
+    // 딥엘 api 번역
+    function translateText(text, callback) {
+        const apiUrl = "https://api-free.deepl.com/v2/translate";
+        const requestData = {
+            auth_key: dplApi,
+            text: text,
+            source_lang: "EN",
+            target_lang: "KO",
+        };
+
+        fetch(apiUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: Object.entries(requestData)
+                    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+                    .join("&"),
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.translations && data.translations.length > 0) {
+                    const translatedText = data.translations[0].text;
+                    callback(translatedText);
+                } else {
+                    console.error("Translation failed. Response:", data);
+                    callback("응답이 돌아오지 않았습니다."); // 빈 문자열로 콜백 호출
+                }
+            })
+            .catch((error) => {
+                console.error("Translation error:", error);
+                callback("잘못된 api입니다."); // 빈 문자열로 콜백 호출
+            });
+    }
 })();
