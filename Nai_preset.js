@@ -473,24 +473,28 @@
     }
 
 
-    function saveCurrentSet(inputType) {
-        if (currentContentDialog) {
-            document.body.removeChild(currentContentDialog);
-            currentContentDialog = null;
-        }
+function saveCurrentSet(inputType) {
+    if (currentContentDialog) {
+        document.body.removeChild(currentContentDialog);
+        currentContentDialog = null;
+    }
 
-        let initialPromptContents = [];
-        if (inputType === 'slot') {
-            const slotContainer = document.getElementById('slot-container');
-            if (!slotContainer) return;
-            const selectBoxes = Array.from(slotContainer.querySelectorAll('.preset-select-div .select-header'));
-            initialPromptContents = selectBoxes.map(selectBox => {
-                return selectBox.textContent ===  `${getSlotTypeByIndex(selectBoxes.indexOf(selectBox))} 프리셋 선택` ? '' : selectBox.textContent;
-            });
-        } else if (inputType === 'area') {
-            const promptAreas = getPromptAreas();
-            initialPromptContents = promptAreas.map(area => area.textContent);
-        }
+    let initialPromptContents = [];
+    if (inputType === 'slot') {
+        const slotContainer = document.getElementById('slot-container');
+        if (!slotContainer) return;
+        const selectBoxes = Array.from(slotContainer.querySelectorAll('.preset-select-div .select-header'));
+        const promptAreas = getPromptAreas(); // getPromptAreas() 호출
+
+        initialPromptContents = selectBoxes.map((selectBox, index) => { // index 추가
+            // 변경된 부분: promptAreas에서 해당 index의 요소의 textContent 사용
+            return promptAreas[index] ? promptAreas[index].textContent : '';
+        });
+    } else if (inputType === 'area') {
+        const promptAreas = getPromptAreas();
+        initialPromptContents = promptAreas.map(area => area.textContent);
+    }
+
 
 
         const saveDialog = createPromptInputDialog('프리셋 세트 저장', true, initialPromptContents);
