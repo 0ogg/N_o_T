@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.51
 // @description
-// @author       
+// @author       Claude
 // @match        https://novelai.net/image*
 // @grant        none
 // ==/UserScript==
@@ -768,52 +768,74 @@
 
         const fullSetPresetsContainer = document.createElement('div');
         fullSetPresetsContainer.style.cssText = 'margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 10px;';
-
-        const fullSetPresetsTitle = document.createElement('div');
-        fullSetPresetsTitle.textContent = '프리셋 세트';
-        fullSetPresetsTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; font-size: 1.1em;';
-        fullSetPresetsContainer.appendChild(fullSetPresetsTitle);
-
-        const fullSetPresetsGrid = document.createElement('div');
-        fullSetPresetsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 2px;';
-
-        let timer;
-        let isLongPress = false;
-
-        presetData.fullSetPresets.forEach((preset, index) => {
-            const presetContainer = document.createElement('div');
-            presetContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 1px;';
-
-            const presetButton = document.createElement('button');
-            presetButton.textContent = preset.title;
-            presetButton.classList.add('preset-button');
-            presetButton.style.cssText += 'flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; padding: 6px; font-size: 0.9em;';
-            presetButton.addEventListener('click', () => {
-                if (isLongPress) {
-                    isLongPress = false;
-                    return;
-                }
-                applysetFullPreset(index);
-            });
-
-            presetButton.addEventListener('mousedown', () => {
-                isLongPress = false;
-                timer = setTimeout(() => {
-                    isLongPress = true;
-                    showPresetContent(preset, index, true);
-                }, 500);
-            });
-            presetButton.addEventListener('mouseup', () => {
-                clearTimeout(timer);
-            });
-            presetButton.addEventListener('mouseleave', () => {
-                clearTimeout(timer);
-            });
-
-
-            presetContainer.appendChild(presetButton);
-            fullSetPresetsGrid.appendChild(presetContainer);
-        });
+const fullSetPresetsTitle = document.createElement('div');
+fullSetPresetsTitle.textContent = '프리셋 세트';
+fullSetPresetsTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; font-size: 1.1em;';
+fullSetPresetsContainer.appendChild(fullSetPresetsTitle);
+const fullSetPresetsGrid = document.createElement('div');
+fullSetPresetsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 2px;';
+let timer;
+let isLongPress = false;
+presetData.fullSetPresets.forEach((preset, index) => {
+    const presetContainer = document.createElement('div');
+    presetContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 1px;';
+    const presetButton = document.createElement('button');
+    presetButton.textContent = preset.title;
+    presetButton.classList.add('preset-button');
+    presetButton.style.cssText += 'flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; padding: 6px; font-size: 0.9em;';
+    
+    // 클릭 이벤트
+    presetButton.addEventListener('click', () => {
+        if (isLongPress) {
+            isLongPress = false;
+            return;
+        }
+        applysetFullPreset(index);
+    });
+    
+    // 마우스 이벤트 (PC)
+    presetButton.addEventListener('mousedown', () => {
+        isLongPress = false;
+        timer = setTimeout(() => {
+            isLongPress = true;
+            showPresetContent(preset, index, true);
+        }, 500);
+    });
+    presetButton.addEventListener('mouseup', () => {
+        clearTimeout(timer);
+    });
+    presetButton.addEventListener('mouseleave', () => {
+        clearTimeout(timer);
+    });
+    
+    // 터치 이벤트 (모바일)
+    presetButton.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        timer = setTimeout(() => {
+            isLongPress = true;
+            showPresetContent(preset, index, true);
+        }, 500);
+        // 기본 컨텍스트 메뉴 방지
+        e.preventDefault();
+    });
+    presetButton.addEventListener('touchend', () => {
+        if (!isLongPress) {
+            clearTimeout(timer);
+        }
+    });
+    presetButton.addEventListener('touchcancel', () => {
+        clearTimeout(timer);
+        isLongPress = false;
+    });
+    presetButton.addEventListener('touchmove', (e) => {
+        // 터치 움직임이 있으면 롱프레스 취소
+        clearTimeout(timer);
+        isLongPress = false;
+    });
+    
+    presetContainer.appendChild(presetButton);
+    fullSetPresetsGrid.appendChild(presetContainer);
+});
 
         fullSetPresetsContainer.appendChild(fullSetPresetsGrid);
         panel.appendChild(fullSetPresetsContainer);
