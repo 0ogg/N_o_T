@@ -7,7 +7,6 @@
 // @match        https://novelai.net/image*
 // @grant        none
 // ==/UserScript==
-
 (function() {
     'use strict';
 
@@ -231,6 +230,32 @@
         input:checked + .toggle-slider:before {
             transform: translateX(20px); /* 오른쪽으로 이동 */
         }
+
+        /* 이미지 미러링 패널 스타일 (추가) */
+        #image-mirror-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 1000px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        #image-mirror-panel img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            cursor: pointer;
+        }
+
+        #image-mirror-panel.hidden {
+            transform: translateX(1000px);
+        }
     `;
     document.head.appendChild(style);
 
@@ -249,11 +274,97 @@
     // 현재 열려있는 내용 다이얼로그
     let currentContentDialog = null;
 
-    // 이미지 링크 기능을 위한 Mutation observer
-    let imageLinkObserver = null;
-
-    // 현재 열려있는 select options div
+   // 현재 열려있는 select options div
     let currentSelectOptions = null;
+
+    // 이미지 미러링 관련 변수
+    const PANEL_WIDTH = 1220;
+    const PANEL_ID = 'image-mirror-panel';
+    let lastBlobUrl = null;
+    let panel = null;
+    let imageObserver = null; // MutationObserver 인스턴스 저장
+
+
+    // 이미지 미러링 패널 생성
+    const createMirrorPanel = () => {
+        if (panel) return panel;
+
+        panel = document.createElement('div');
+        panel.id = PANEL_ID;
+        panel.className = 'hidden';
+        document.body.appendChild(panel);
+
+        return panel;
+    };
+
+    // 이미지 미러링 패널에 이미지 표시
+    const displayImage = (imageUrl) => {
+        if (lastBlobUrl === imageUrl) return;
+        lastBlobUrl = imageUrl;
+
+        const panel = createMirrorPanel();
+        panel.innerHTML = '';
+        panel.className = '';
+
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.onclick = () => {
+            panel.className = 'hidden';
+        };
+
+        panel.appendChild(img);
+    };
+
+
+    // 이미지 모니터링 시작/중지 함수
+    function toggleImageMonitoring(enabled) {
+        if (enabled) {
+            if (imageObserver) return; // 이미 실행 중이면 중복 실행 방지
+
+            imageObserver = new MutationObserver((mutations) => {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+                        const src = mutation.target.src;
+                        if (src && src.startsWith('blob:')) {
+                            displayImage(src);
+                        }
+                    }
+
+                    if (mutation.addedNodes.length) {
+                        mutation.addedNodes.forEach(node => {
+                            if (node.nodeName === 'IMG' && node.src && node.src.startsWith('blob:')) {
+                                displayImage(node.src);
+                            }
+
+                            // 자식 노드 확인
+                            if (node.querySelectorAll) {
+                                const images = node.querySelectorAll('img[src^="blob:"]');
+                                images.forEach(img => displayImage(img.src));
+                            }
+                        });
+                    }
+                });
+            });
+
+            imageObserver.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['src'],
+                childList: true,
+                subtree: true
+            });
+        } else {
+            if (imageObserver) {
+                imageObserver.disconnect();
+                imageObserver = null; // 옵저버 해제
+            }
+            // 패널 숨김 처리 (필요한 경우)
+            if(panel) {
+               panel.className = 'hidden';
+            }
+            lastBlobUrl = null; // 마지막 이미지 URL 초기화
+
+        }
+    }
 
     // 로컬 스토리지에서 데이터를 가져오는 헬퍼 함수
     function getLocalStorage(key, defaultValue) {
@@ -277,8 +388,9 @@
     }
 
     // 메인 UI 컨테이너 생성 및 추가
+    let toggleButton;
     const createUI = () => {
-        const toggleButton = document.createElement('div');
+        toggleButton = document.createElement('div');
         toggleButton.id = 'preset-toggle';
         toggleButton.textContent = 'P';
         toggleButton.classList.add('toggle-button');
@@ -621,7 +733,7 @@ function saveCurrentSet(inputType) {
         }
     }
 
-    // 프리셋 삭제 (수정됨: 삭제 시 수정 창 닫기 기능 추가)
+    // 프리셋 삭제
     function deletePreset(type, index) {
         if (confirm('정말로 삭제하시겠습니까?')) {
             const deletedPreset = presetData[type][index]; // 삭제될 프리셋 정보 저장
@@ -653,71 +765,13 @@ function saveCurrentSet(inputType) {
         }
     }
 
-    function setupImageLinkFeature(enabled) {
-        const mainPromptArea = getPromptAreas()[0];
-        if (!mainPromptArea) return;
-
-        const mainPromptText = mainPromptArea.textContent.trim();
-        const images = document.querySelectorAll('img[alt]');
-
-        images.forEach(img => {
-            if (img.alt && mainPromptText.includes(img.alt.substring(0, 20))) {
-                img.style.cursor = enabled ? 'pointer' : 'auto';
-                img.onclick = enabled ? (e) => {
-                    e.preventDefault();
-                    window.open(img.src, '_blank');
-                } : null;
-            } else {
-                img.style.cursor = 'auto';
-                img.onclick = null;
-            }
-        });
-
-        if (enabled) {
-            if (!imageLinkObserver) {
-                imageLinkObserver = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.addedNodes.length) {
-                            makeImagesClickable();
-                        }
-                    });
-                });
-                imageLinkObserver.observe(document.body, { childList: true, subtree: true });
-            }
-        } else {
-            if (imageLinkObserver) {
-                imageLinkObserver.disconnect();
-                imageLinkObserver = null;
-            }
-        }
-    }
-
-    function makeImagesClickable() {
-        const mainPromptArea = getPromptAreas()[0];
-        if (!mainPromptArea) return;
-
-        const mainPromptText = mainPromptArea.textContent.trim();
-        const images = document.querySelectorAll('img[alt]');
-
-        images.forEach(img => {
-            if (img.alt && mainPromptText.includes(img.alt.substring(0, 20))) {
-                img.style.cursor = 'pointer';
-                img.onclick = (e) => {
-                    e.preventDefault();
-                    window.open(img.src, '_blank');
-                };
-            }
-        });
-    }
-
-
     function renderPresetPanel() {
         const panel = document.getElementById('preset-panel');
         if (!panel) return;
 
         panel.innerHTML = '';
 
-        // 이미지 링크 설정 컨테이너 수정: 체크박스 -> div 스위치
+        // 이미지 링크 설정 컨테이너
         const imageLinkContainer = document.createElement('div');
         imageLinkContainer.style.cssText = 'margin-bottom: 10px; display: flex; align-items: center;';
 
@@ -740,16 +794,16 @@ function saveCurrentSet(inputType) {
         // 텍스트 라벨
         const imageLinkLabel = document.createElement('label');
         imageLinkLabel.htmlFor = 'image-link-feature';
-        imageLinkLabel.textContent = '이미지 클릭시 새탭에서 열기';
+        imageLinkLabel.textContent = '크게 보기 패널';
 
         imageLinkContainer.appendChild(imageLinkSwitch); // 스위치 추가
         imageLinkContainer.appendChild(imageLinkLabel); // 텍스트 라벨 추가
         panel.appendChild(imageLinkContainer);
 
-        // 이벤트 리스너 수정: 체크박스 change -> 스위치 label 클릭
+        // 이벤트 리스너: 스위치 클릭 시 이미지 모니터링 토글
         imageLinkSwitch.addEventListener('click', () => {
             imageLinkCheckbox.checked = !imageLinkCheckbox.checked; // 체크박스 상태 토글
-            setupImageLinkFeature(imageLinkCheckbox.checked);
+            toggleImageMonitoring(imageLinkCheckbox.checked);
             localStorage.setItem('image_link_enabled', imageLinkCheckbox.checked);
         });
 
@@ -878,8 +932,6 @@ presetData.fullSetPresets.forEach((preset, index) => {
         panel.appendChild(categoryPresetsContainer);
 
         showCategoryPresets(activeCategoryTab);
-
-        setupImageLinkFeature(imageLinkCheckbox.checked);
     }
 
     // 탭 하이라이트 업데이트 함수
@@ -901,7 +953,7 @@ presetData.fullSetPresets.forEach((preset, index) => {
         container.innerHTML = '';
         activeCategoryTab = category;
 
-        const tabsContainer = document.querySelector('#preset-panel > div:nth-child(9)');
+        const tabsContainer = document.querySelector('#preset-panel > div:nth-child(9)'); // 탭 컨테이너 선택자 수정
         if (tabsContainer) {
             updateActiveTabHighlight(tabsContainer, activeCategoryTab);
         }
@@ -1106,16 +1158,16 @@ presetData.fullSetPresets.forEach((preset, index) => {
         const saveAction = () => {
             const newTitle = document.getElementById('final-preset-title').value;
             const newPrompts = [];
-            let hasIndividualTitle = false; // 개별 프리셋 제목 유무 확인 변수 (수정)
+            let hasIndividualTitle = false; // 개별 프리셋 제목 유무 확인 변수
 
             for (let i = 0; i < preset.prompts.length; i++) { // 저장된 프리셋 갯수만큼 순회
-                const titleInput = document.getElementById(`preset-title-${i}`); // 제목 input 요소 가져오기 (수정)
-                const title = titleInput.value.trim(); // 제목 값 가져오기 (수정)
+                const titleInput = document.getElementById(`preset-title-${i}`); // 제목 input 요소 가져오기
+                const title = titleInput.value.trim(); // 제목 값 가져오기
                 const content = document.getElementById(`preset-content-${i}`).value;
-                 const category = document.getElementById(`preset-category-${i}`).value; // category 값 가져오기 (수정)
+                 const category = document.getElementById(`preset-category-${i}`).value; // category 값 가져오기
 
 
-                if (title !== '' && content !== '') { // 개별 제목이 있을 때만 개별 프리셋 저장 (수정)
+                if (title !== '' && content !== '') { // 개별 제목이 있을 때만 개별 프리셋 저장
                     if (category === 'main') {
                         presetData.main.push({title: title, content: content});
                     } else if (category === 'UC') {
@@ -1123,7 +1175,7 @@ presetData.fullSetPresets.forEach((preset, index) => {
                     } else if (category === 'character') {
                         presetData.character.push({title: title, content: content});
                     }
-                    hasIndividualTitle = true; // 개별 제목이 하나라도 있으면 true로 설정 (수정)
+                    hasIndividualTitle = true; // 개별 제목이 하나라도 있으면 true로 설정
                 }
                 newPrompts.push(content);
             }
@@ -1134,7 +1186,7 @@ presetData.fullSetPresets.forEach((preset, index) => {
             };
             saveData();
             refreshUI(); // UI 전체 갱신
-            showCategoryPresets(activeCategoryTab); // 수정: 현재 탭 유지
+            showCategoryPresets(activeCategoryTab); // 현재 탭 유지
             document.body.removeChild(dialog); // 수정 완료 후 다이얼로그 닫기
             currentContentDialog = null; // currentContentDialog 변수 초기화
         };
@@ -1172,7 +1224,7 @@ presetData.fullSetPresets.forEach((preset, index) => {
 
         renderPresetPanel();
 
-        const observer = new MutationObserver((mutations) => {
+         const proseMirrorObserver = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.addedNodes.length || mutation.removedNodes.length) {
                     for (let i = 0; i < mutation.addedNodes.length; i++) {
@@ -1194,12 +1246,18 @@ presetData.fullSetPresets.forEach((preset, index) => {
             });
         });
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        proseMirrorObserver.observe(document.body, { childList: true, subtree: true });
+
+
     }
 
     // DOMContentLoaded 이벤트 리스너 등록
     window.addEventListener('DOMContentLoaded', () => {
         init();
+
+        // 초기 로딩 시 이미지 모니터링 설정 (필요한 경우)
+        const imageLinkEnabled = getLocalStorage('image_link_enabled', false);
+        toggleImageMonitoring(imageLinkEnabled);
     });
 
 })();
