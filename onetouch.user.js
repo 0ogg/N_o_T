@@ -419,7 +419,8 @@ h1, h2, h3 {
         if (dplD || mode === 'summary' || localStorage.getItem('geminiDefault') === 'true' || dplC !== 0) {
             if (mode === 'summary') {
                 sendGeminiRequest(pText, 'summary', function(summaryText) {
-                    extractedText.innerHTML = `${summaryText}`;
+                    pText = summaryText;
+                    continueProcessing();
                 });
             } else if (localStorage.getItem('geminiDefault') === 'true') {
                 sendGeminiRequest(pText, 'translate', function(translatedText) {
@@ -445,133 +446,143 @@ h1, h2, h3 {
             var pattern = /"([^"]+)"/g;
             var newText = pText.replace(pattern, '<span class="hT">"$1"</span>');
             pText = '<p class="nm">' + newText.replace(/\n/g, '</p><p class="nm">') + '</p>';
+            // 제목 변환 (## 제목 => <h2>제목</h2>)
+            pText = pText.replace(/^## (.*$)/gm, "<h2>$1</h2>");
+            pText = pText.replace(/^# (.*$)/gm, "<h1>$1</h1>");
+
+            // 굵은 글씨 변환 (**텍스트** -> <b>텍스트</b>)
+            pText = pText.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
+
+            // 리스트 변환 (- 항목 -> <ul><li>항목</li></ul>)
+            pText = pText.replace(/^- (.*)$/gm, "<ul><li>$1</li></ul>");
+
+            // 여러 개의 <ul> 태그가 연속될 경우 하나로 합침
+            pText = pText.replace(/<\/ul>\n<ul>/g, "");
 
             extractedText.innerHTML = pText;
             dplC = 0;
         }
     }
+// 아이콘 이동 함수
+// 아이콘 드래그 변수
+let offsetX, offsetY, isDragging = false;
+let dragTimeout;
 
-    // 아이콘 이동 함수
-    // 아이콘 드래그 변수
-    let offsetX, offsetY, isDragging = false;
-    let dragTimeout;
+// 로컬 스토리지에서 위치 정보를 불러오고 적용합니다.
+const savedPosition = localStorage.getItem("tBallP");
+if (savedPosition) {
+    const { right, bottom } = JSON.parse(savedPosition);
+    tMini.style.right = right + "px";
+    tMini.style.bottom = bottom + "px";
+}
 
-    // 로컬 스토리지에서 위치 정보를 불러오고 적용합니다.
-    const savedPosition = localStorage.getItem("tBallP");
-    if (savedPosition) {
-        const {
-            right,
-            bottom
-        } = JSON.parse(savedPosition);
-        tMini.style.right = right + "px";
-        tMini.style.bottom = bottom + "px";
-    }
+// 아이콘 이동 함수
+function handleIconMouseDown(e) {
+    if (isDragging) return; // 드래그 중이면 클릭 이벤트를 차단
 
-    // 아이콘 이동 함수
-    function handleIconMouseDown(e) {
-        // 마우스 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
-        dragTimeout = setTimeout(function() {
-            isDragging = true;
+    // 마우스 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
+    dragTimeout = setTimeout(function() {
+        isDragging = true;
 
-            // 드래그가 시작된 위치 저장
-            offsetX = e.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
-            offsetY = e.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
+        // 드래그가 시작된 위치 저장
+        offsetX = e.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
+        offsetY = e.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
+    }, 300);
 
+    // 이벤트 기본 동작 막기
+    e.preventDefault();
+}
 
-        }, 300);
+function handleIconDrag(e) {
+    if (!isDragging) return;
+    // 이벤트 기본 동작 막기
+    e.preventDefault();
 
-        // 이벤트 기본 동작 막기
-        e.preventDefault();
-    }
+    // 새로운 위치 계산
+    let right = window.innerWidth - e.clientX - offsetX;
+    let bottom = window.innerHeight - e.clientY - offsetY;
 
-    function handleIconDrag(e) {
-        if (!isDragging) return;
-        // 이벤트 기본 동작 막기
-        e.preventDefault();
+    // div를 새 위치로 이동
+    right = Math.min(Math.max(0, right), window.innerWidth - tMini.offsetWidth);
+    bottom = Math.min(Math.max(0, bottom), window.innerHeight - tMini.offsetHeight);
 
-        // 새로운 위치 계산
-        let right = window.innerWidth - e.clientX - offsetX;
-        let bottom = window.innerHeight - e.clientY - offsetY;
+    tMini.style.right = right + "px";
+    tMini.style.bottom = bottom + "px";
+}
 
-        // div를 새 위치로 이동
-        right = Math.min(Math.max(0, right), window.innerWidth - tMini.offsetWidth);
-        bottom = Math.min(Math.max(0, bottom), window.innerHeight - tMini.offsetHeight);
+function handleIconDragEnd() {
+    isDragging = false;
 
-        tMini.style.right = right + "px";
-        tMini.style.bottom = bottom + "px";
+    // 위치 정보를 로컬 스토리지에 저장
+    const position = {
+        right: parseFloat(tMini.style.right),
+        bottom: parseFloat(tMini.style.bottom)
+    };
+    localStorage.setItem("tBallP", JSON.stringify(position));
 
-    }
+    // 드래그 타임아웃 초기화
+    clearTimeout(dragTimeout);
+}
 
-    function handleIconDragEnd() {
-        isDragging = false;
+// 터치 이벤트 핸들러
+function handleIconTouchStart(e) {
+    if (isDragging) return; // 드래그 중이면 클릭 이벤트를 차단
 
-        // 위치 정보를 로컬 스토리지에 저장
-        const position = {
-            right: parseFloat(tMini.style.right),
-            bottom: parseFloat(tMini.style.bottom)
-        };
-        localStorage.setItem("tBallP", JSON.stringify(position));
+    // 터치 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
+    dragTimeout = setTimeout(function() {
+        isDragging = true;
 
-        // 드래그 타임아웃 초기화
-        clearTimeout(dragTimeout);
-    }
-    // 아이콘 이동 함수
-    function handleIconTouchStart(e) {
-        // 터치 다운 이벤트가 발생하면 타임아웃을 설정하고 클릭을 길게 눌렀는지 확인합니다.
-        dragTimeout = setTimeout(function() {
-            isDragging = true;
-
-            // 드래그가 시작된 위치 저장
-            const touch = e.touches[0];
-            offsetX = touch.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
-            offsetY = touch.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
-            // 이벤트 기본 동작 막기
-            e.preventDefault();
-        }, 500);
-
-    }
-
-    function handleIconTouchMove(e) {
-        if (!isDragging) return;
-        // 이벤트 기본 동작 막기
-        e.preventDefault();
-
-        // 새로운 위치 계산
+        // 드래그가 시작된 위치 저장
         const touch = e.touches[0];
-        let right = window.innerWidth - touch.clientX - offsetX;
-        let bottom = window.innerHeight - touch.clientY - offsetY;
+        offsetX = touch.clientX - tMini.getBoundingClientRect().right + tMini.offsetWidth;
+        offsetY = touch.clientY - tMini.getBoundingClientRect().bottom + tMini.offsetHeight;
+        // 이벤트 기본 동작 막기
+        e.preventDefault();
+    }, 500);
+}
 
-        // div를 새 위치로 이동
-        right = Math.min(Math.max(0, right), window.innerWidth - tMini.offsetWidth);
-        bottom = Math.min(Math.max(0, bottom), window.innerHeight - tMini.offsetHeight);
+function handleIconTouchMove(e) {
+    if (!isDragging) return;
+    // 이벤트 기본 동작 막기
+    e.preventDefault();
 
-        tMini.style.right = right + "px";
-        tMini.style.bottom = bottom + "px";
-    }
+    // 새로운 위치 계산
+    const touch = e.touches[0];
+    let right = window.innerWidth - touch.clientX - offsetX;
+    let bottom = window.innerHeight - touch.clientY - offsetY;
 
-    function handleIconTouchEnd() {
-        isDragging = false;
+    // div를 새 위치로 이동
+    right = Math.min(Math.max(0, right), window.innerWidth - tMini.offsetWidth);
+    bottom = Math.min(Math.max(0, bottom), window.innerHeight - tMini.offsetHeight);
 
-        // 위치 정보를 로컬 스토리지에 저장
-        const position = {
-            right: parseFloat(tMini.style.right),
-            bottom: parseFloat(tMini.style.bottom)
-        };
-        localStorage.setItem("tBallP", JSON.stringify(position));
+    tMini.style.right = right + "px";
+    tMini.style.bottom = bottom + "px";
+}
 
-        // 드래그 타임아웃 초기화
-        clearTimeout(dragTimeout);
-    }
+function handleIconTouchEnd() {
+    isDragging = false;
 
-    // 터치 이벤트 핸들러
-    tMini.addEventListener("touchstart", handleIconTouchStart);
-    document.addEventListener("touchmove", handleIconTouchMove);
-    document.addEventListener("touchend", handleIconTouchEnd);
+    // 위치 정보를 로컬 스토리지에 저장
+    const position = {
+        right: parseFloat(tMini.style.right),
+        bottom: parseFloat(tMini.style.bottom)
+    };
+    localStorage.setItem("tBallP", JSON.stringify(position));
 
-    // 마우스 이벤트 핸들러는 그대로 유지
-    tMini.addEventListener("mousedown", handleIconMouseDown);
-    document.addEventListener("mousemove", handleIconDrag);
-    document.addEventListener("mouseup", handleIconDragEnd);
+    // 드래그 타임아웃 초기화
+    clearTimeout(dragTimeout);
+}
+
+// 터치 이벤트 핸들러
+tMini.addEventListener("touchstart", handleIconTouchStart);
+document.addEventListener("touchmove", handleIconTouchMove);
+document.addEventListener("touchend", handleIconTouchEnd);
+
+// 마우스 이벤트 핸들러는 그대로 유지
+tMini.addEventListener("mousedown", handleIconMouseDown);
+document.addEventListener("mousemove", handleIconDrag);
+document.addEventListener("mouseup", handleIconDragEnd);
+
 
     // 설정창 ⚙️
     var nsSettingsDiv = document.createElement('div');
@@ -663,21 +674,12 @@ h1, h2, h3 {
         <input type="text" style="width:60%"  class="ns-input" id="geminiApi" value="${localStorage.getItem('geminiApi') || ''}"><br>
         <label for="geminiModel">모델 선택: </label>
         <select id="geminiModel" style="width:65%" class="ns-input">
-            <option value="gemini-2.0-flash-thinking-exp">gemini-2.0-flash-thinking-exp</option>
+            <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
             <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp</option>
+            <option value="gemini-2.0-flash-thinking-exp">gemini-2.0-flash-thinking-exp</option>
             <option value="gemini-exp-1206">gemini-exp-1206</option>
             <option value="gemini-exp-1121">gemini-exp-1121</option>
-            <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
-            <option value="gemini-1.5-pro">gemini-1.5-pro</option>
-            <option value="gemini-1.5-pro-001">gemini-1.5-pro-001</option>
-            <option value="gemini-1.5-pro-002">gemini-1.5-pro-002</option>
-            <option value="gemini-1.5-flash-8b-latest">gemini-1.5-flash-8b-latest</option>
-            <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b</option>
-            <option value="gemini-1.5-flash-8b-001">gemini-1.5-flash-8b-001</option>
-            <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
-            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-            <option value="gemini-1.5-flash-001">gemini-1.5-flash-001</option>
-            <option value="gemini-1.5-flash-002">gemini-1.5-flash-002</option>
+            <option value="gemini-2.0-pro-exp-02-05">gemini-2.0-pro-exp-02-05</option>
         </select><br>
   
         <label for="geminiPrompt">영한 번역 프롬프트: </label>
@@ -1588,4 +1590,191 @@ ${localStorage.getItem('geminiSummaryPrompt') || `어째서 지금 스토리가 
                 tMini.classList.remove('loading');
             });
     }
+    // 스토리지 키 설정
+    const STORAGE_KEY_PREFIX = 'prosemirror_preset_';
+    const ACTIVE_PRESET_KEY = 'prosemirror_active_presets';
+    
+    // 스토리지에서 현재 활성화된 프리셋 정보 불러오기
+    let activePresets = GM_getValue(ACTIVE_PRESET_KEY, {});
+    
+    // 스타일 추가
+    const style = document.createElement('style');
+    style.textContent = `
+        .preset-container {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 5px;
+            background: #f5f5f5;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .preset-button {
+            margin: 2px;
+            padding: 4px 8px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background: #fff;
+        }
+        .preset-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #0069d9;
+        }
+        .preset-container-wrapper {
+            position: relative;
+            z-index: 1000;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // MutationObserver 초기화: DOM 변경 감지
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.addedNodes.length) {
+                checkForProseMirror();
+            }
+        }
+    });
+    
+    // 문서 전체 관찰 시작
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    // 초기 실행
+    checkForProseMirror();
+    
+    // ProseMirror 클래스를 가진 요소 탐색 및 처리
+    function checkForProseMirror() {
+        const proseMirrorDivs = document.querySelectorAll('.ProseMirror');
+        proseMirrorDivs.forEach((div, index) => {
+            if (!div.hasAttribute('data-preset-initialized')) {
+                initializePresetContainer(div, index);
+            }
+        });
+    }
+    
+    // 프리셋 컨테이너 초기화
+    function initializePresetContainer(proseMirrorDiv, index) {
+        // 이미 초기화되었는지 확인
+        if (proseMirrorDiv.hasAttribute('data-preset-initialized')) {
+            return;
+        }
+        
+        // 초기화 표시
+        proseMirrorDiv.setAttribute('data-preset-initialized', 'true');
+        
+        // 현재 내용을 0번 프리셋으로 저장
+        const currentContent = proseMirrorDiv.innerHTML;
+        savePreset(index, 0, currentContent);
+        
+        // 활성화된 프리셋 확인 (기본값은 0)
+        const activePresetIndex = activePresets[index] !== undefined ? activePresets[index] : 0;
+        
+        // 프리셋 컨테이너 생성
+        const presetContainerWrapper = document.createElement('div');
+        presetContainerWrapper.className = 'preset-container-wrapper';
+        
+        const presetContainer = document.createElement('div');
+        presetContainer.className = 'preset-container';
+        presetContainerWrapper.appendChild(presetContainer);
+        
+        // 프리셋 버튼 생성
+        for (let presetIndex = 0; presetIndex < 6; presetIndex++) {
+            const button = document.createElement('button');
+            button.className = 'preset-button' + (presetIndex === activePresetIndex ? ' active' : '');
+            button.textContent = `프리셋 ${presetIndex}`;
+            button.dataset.presetIndex = presetIndex;
+            
+            button.addEventListener('click', function() {
+                loadPreset(index, presetIndex, proseMirrorDiv);
+                
+                // 활성화 버튼 표시 업데이트
+                presetContainer.querySelectorAll('.preset-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+                
+                // 활성화된 프리셋 저장
+                activePresets[index] = presetIndex;
+                GM_setValue(ACTIVE_PRESET_KEY, activePresets);
+            });
+            
+            presetContainer.appendChild(button);
+        }
+        
+        // 프로즈미러 div 앞에 프리셋 컨테이너 삽입
+        const parent = proseMirrorDiv.parentNode;
+        if (parent) {
+            parent.insertBefore(presetContainerWrapper, proseMirrorDiv);
+        } else {
+            // 부모가 없는 경우를 대비한 예외 처리
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.appendChild(presetContainerWrapper);
+            wrapperDiv.appendChild(proseMirrorDiv.cloneNode(true));
+            proseMirrorDiv.replaceWith(wrapperDiv);
+        }
+        
+        // 초기 활성화된 프리셋 적용
+        if (activePresetIndex !== 0) {
+            loadPreset(index, activePresetIndex, proseMirrorDiv);
+        }
+        
+        // 내용 변경 감지 및 자동 저장
+        setupContentChangeListener(proseMirrorDiv, index, activePresetIndex);
+    }
+    
+    // 내용 변경 감지 및 자동 저장 설정
+    function setupContentChangeListener(proseMirrorDiv, divIndex, presetIndex) {
+        // MutationObserver를 사용하여 내용 변경 감지
+        const contentObserver = new MutationObserver(() => {
+            savePreset(divIndex, presetIndex, proseMirrorDiv.innerHTML);
+        });
+        
+        contentObserver.observe(proseMirrorDiv, { 
+            childList: true, 
+            subtree: true, 
+            characterData: true, 
+            attributes: true 
+        });
+        
+        // input 이벤트도 감지
+        proseMirrorDiv.addEventListener('input', () => {
+            savePreset(divIndex, presetIndex, proseMirrorDiv.innerHTML);
+        });
+    }
+    
+    // 프리셋 저장 함수
+    function savePreset(divIndex, presetIndex, content) {
+        const key = `${STORAGE_KEY_PREFIX}${divIndex}_${presetIndex}`;
+        GM_setValue(key, content);
+    }
+    
+    // 프리셋 불러오기 함수
+    function loadPreset(divIndex, presetIndex, proseMirrorDiv) {
+        const key = `${STORAGE_KEY_PREFIX}${divIndex}_${presetIndex}`;
+        const savedContent = GM_getValue(key, '');
+        
+        if (savedContent) {
+            // ProseMirror 내용 변경
+            proseMirrorDiv.innerHTML = savedContent;
+            
+            // ProseMirror 이벤트 발생시키기 (내용 변경 감지를 위해)
+            triggerInputEvent(proseMirrorDiv);
+        }
+    }
+    
+    // 입력 이벤트 트리거 함수
+    function triggerInputEvent(element) {
+        const event = new Event('input', {
+            bubbles: true,
+            cancelable: true,
+        });
+        element.dispatchEvent(event);
+    }
+    
+    // 페이지 로드 시, 각 ProseMirror에 활성 프리셋 적용
+    window.addEventListener('load', () => {
+        setTimeout(checkForProseMirror, 1000); // 페이지 완전히 로드 후 실행
+    });
+
 })();
