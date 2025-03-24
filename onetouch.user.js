@@ -107,7 +107,6 @@ cathedral, modern, western, uncensored, nsfw, couple, hetero, upright straddle, 
         uc_preset: 'Preset_Heavy',
         quality_toggle: true,
         legacy: true,
-        dynamic_thresholding: false
     }
 };
 
@@ -2320,27 +2319,6 @@ createImageSettingsSection: function() {
     qualityGroup.appendChild(qualityCheckbox);
     qualityGroup.appendChild(qualityLabel);
 
-    // 다이나믹 스레드
-    const dynamicGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const dynamicCheckbox = Utils.createElement('input', {
-        className: 'form-checkbox',
-        id: 'image-dynamic',
-        type: 'checkbox',
-        onchange: (e) => {
-            Storage.set('imageDynamic', e.target.checked);
-        }
-    });
-    dynamicCheckbox.checked = Storage.get('imageDynamic', false);
-
-    const dynamicLabel = Utils.createElement('label', {
-        for: 'image-dynamic'
-    }, 'Dynamic Thresholding');
-
-    dynamicGroup.appendChild(dynamicCheckbox);
-    dynamicGroup.appendChild(dynamicLabel);
 
     // 레거시 모드
     const legacyGroup = Utils.createElement('div', {
@@ -2376,7 +2354,6 @@ createImageSettingsSection: function() {
     section.appendChild(rescaleGroup);
     section.appendChild(ucPresetGroup);
     section.appendChild(qualityGroup);
-    section.appendChild(dynamicGroup);
     section.appendChild(legacyGroup);
 
     return section;
@@ -3592,7 +3569,6 @@ createImageSettingsSection: function() {
                     const noiseSchedule = Storage.get('imageNoiseSchedule', CONFIG.imageGeneration.noiseSchedule);
                     const steps = parseInt(Storage.get('imageSteps', CONFIG.imageGeneration.steps));
                     const ucPreset = parseInt(Storage.get('imageUcPreset', CONFIG.imageGeneration.ucPreset));
-                    const dynamic = Storage.get('imageDynamic', false);
                     const legacy = Storage.get('imageLegacy', true);
 
                     // 이미지 크기에 따른 width, height 설정
@@ -3626,9 +3602,6 @@ createImageSettingsSection: function() {
                             n_samples: 1,
                             ucPreset: ucPreset,
                             qualityToggle: false,
-                            sm: false,
-                            sm_dyn: dynamic,
-                            dynamic_thresholding: dynamic,
                             controlnet_strength: 1,
                             legacy: legacy,
                             add_original_image: false,
