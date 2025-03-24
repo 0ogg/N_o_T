@@ -3719,7 +3719,11 @@ createImageSettingsSection: function() {
                 if (this.currentImageUrl) {
                     URL.revokeObjectURL(this.currentImageUrl);
                 }
-imageName = `${document.querySelector('[aria-label="Story Title"]').value}${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${new Date().toTimeString().slice(0, 5).replace(':', '')}.png`;
+                const title = document.querySelector('[aria-label="Story Title"]').value;
+const dateTime = new Date().toISOString().slice(0, 10).replace(/-/g, '') + new Date().toTimeString().slice(0, 5).replace(':', '');
+
+imageName = title ? `${title}${dateTime}.png` : `${dateTime}.png`;
+
 
 
                 // 현재 이미지 정보 저장
