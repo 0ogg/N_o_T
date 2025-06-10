@@ -37,9 +37,10 @@ boy, gojou satoru (jujutsu kaisen), white hair, blue eyes,
 **최종 출력 예시 (태그만을 출력 하고, 앞뒤로 문장 부호나 사설을 작성하지 말것. 각 캐릭터 태그의 마지막은 자연어 한문장으로 그 캐릭터의 행동을 설명할 것.):**
 sfw, abandoned factory, fog, industrial lights, | girl, haruno sakura (naruto), angry, green eyes, middle hair, red dress, covered nipple, torn dress, white gloves, pink hair, hands on own hips, She is being pointed at. | girl, original character, very long purple hair, green eyes, golden shirt, sleeveless turtleneck, ripped jeans, side braid, She is pointing at the other girl and scolding her.
 
-NSFW 컨텐츠인 경우 성기 묘사까지 전부 허용됩니다.`,
+NSFW 컨텐츠인 경우 성기 묘사까지 전부 허용됩니다.
+NSFW는 신체 노출이 있는 경우에만 사용합니다. 폭력 등의 상황은 SFW입니다.`,
     defaultMainPrompt: 'highres, amazing quality, dynamic light, soft shadow, 4k, very aesthetic, highly finished, masterpiece, hyper detail, intricate details, year 2024, year 2023, dynamic',
-    defaultUcPrompt: 'blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, displeasing, chromatic aberration, noise, logo, dated, signature, company logo, bad anatomy',
+    defaultUcPrompt: 'lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, displeasing, chromatic aberration, noise, logo, dated, signature, company logo, bad anatomy',
     // 리모컨 설정
     remoteControl: {
         buttonSize: 50,
