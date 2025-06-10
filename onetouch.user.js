@@ -1385,22 +1385,10 @@ const restoreButton = Utils.createElement('button', {
             }
         });
 
-        const geminiApiStatus = Utils.createElement('span', {
-            id: 'gemini-api-status',
-            style: {
-                display: 'inline-block',
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                backgroundColor: 'gray',
-                marginLeft: '5px'
-            }
-        });
 
         geminiGroup.appendChild(geminiTitle);
         geminiGroup.appendChild(geminiApiLabel);
         geminiGroup.appendChild(geminiApiInput);
-        geminiGroup.appendChild(geminiApiStatus);
 
         // DeepL API 설정
         const deeplGroup = Utils.createElement('div', {
@@ -1425,22 +1413,10 @@ const restoreButton = Utils.createElement('button', {
             }
         });
 
-        const deeplApiStatus = Utils.createElement('span', {
-            id: 'deepl-api-status',
-            style: {
-                display: 'inline-block',
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                backgroundColor: 'gray',
-                marginLeft: '5px'
-            }
-        });
 
         deeplGroup.appendChild(deeplTitle);
         deeplGroup.appendChild(deeplApiLabel);
         deeplGroup.appendChild(deeplApiInput);
-        deeplGroup.appendChild(deeplApiStatus);
 
         // NovelAI API 설정
         const novelaiGroup = Utils.createElement('div', {
