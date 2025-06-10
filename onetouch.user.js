@@ -725,7 +725,6 @@ flex-grow: 1;
 }
 
 #translation-input-container {
-    display: none;
     width: 100%;
     margin-top: 10px;
 }
@@ -996,7 +995,10 @@ onclick: (e) => {
 
             // 번역 입력 컨테이너
             const translationInputContainer = Utils.createElement('div', {
-                id: 'translation-input-container'
+                id: 'translation-input-container',
+                style: {
+                    display: Storage.get('geminiInputEnabled', false) ? 'block' : 'none'
+                }
             });
 
             // 번역 입력 필드
