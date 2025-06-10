@@ -389,12 +389,12 @@
 
     // 메인 UI 컨테이너 생성 및 추가
     let toggleButton;
-    const createUI = () => {
         toggleButton = document.createElement('div');
         toggleButton.id = 'preset-toggle';
         toggleButton.textContent = 'P';
         toggleButton.classList.add('toggle-button');
         document.body.appendChild(toggleButton);
+    const createUI = () => {
 
         const presetPanel = document.createElement('div');
         presetPanel.id = 'preset-panel';
