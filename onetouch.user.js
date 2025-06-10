@@ -97,16 +97,17 @@ cathedral, modern, western, uncensored, nsfw, couple, hetero, upright straddle, 
         orientation: 'vertical', // 'vertical' 또는 'horizontal'
         position: { right: '15px', bottom: '20%' }
     },
-    // 삽화 설정
+    // 삽화 설정 
     imageGeneration: {
+        model: 'nai-diffusion-4-5-full', // 기본 모델을 최신으로 변경
         sampler: 'k_euler_ancestral',
-        scale: 6,              // 가이던스 스케일
-        cfg_rescale: 0,        // 가이던스 리스케일
-        noise_schedule: 'karras',
+        scheduler: 'karras',             // 스케줄러 추가
+        scale: 6,                        // 가이던스 스케일
         steps: 28,
-        uc_preset: 'Preset_Heavy',
-        quality_toggle: true,
-        legacy: true,
+        sm: false,                       // Smea 추가
+        sm_dyn: false,                   // Smea DYN 추가
+        decrisper: false,                // Decrisper 추가
+     
     }
 };
 
@@ -1995,370 +1996,175 @@ createImageSettingsSection: function() {
 
     const title = Utils.createElement('h3', {}, 'Image Generation Settings');
 
-    // 삽화 프롬프트
-    const promptGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const promptLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-prompt'
-    }, 'Image Prompt:');
-
+    // 삽화 프롬프트 생성용 프롬프트
+    const promptGroup = Utils.createElement('div', { className: 'form-group' });
+    const promptLabel = Utils.createElement('label', { className: 'form-label', for: 'image-prompt' }, 'Image Prompt (Gemini):');
     const promptTextarea = Utils.createElement('textarea', {
         className: 'form-textarea',
         id: 'image-prompt',
-        oninput: (e) => {
-            Storage.set('imagePrompt', e.target.value);
-        }
+        oninput: (e) => Storage.set('imagePrompt', e.target.value)
     }, Storage.get('imagePrompt', CONFIG.defaultImagePrompt));
-
     promptGroup.appendChild(promptLabel);
     promptGroup.appendChild(promptTextarea);
 
-    // 메인 프롬프트
-    const mainPromptGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const mainPromptLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'main-prompt'
-    }, 'Main Prompt:');
-
+    // 메인 프롬프트 (Positive)
+    const mainPromptGroup = Utils.createElement('div', { className: 'form-group' });
+    const mainPromptLabel = Utils.createElement('label', { className: 'form-label', for: 'main-prompt' }, 'Main Prompt (Positive):');
     const mainPromptTextarea = Utils.createElement('textarea', {
-        className: 'form-textarea',
-        id: 'main-prompt',
-        oninput: (e) => {
-            Storage.set('mainPrompt', e.target.value);
-        }
+        className: 'form-textarea', id: 'main-prompt',
+        oninput: (e) => Storage.set('mainPrompt', e.target.value)
     }, Storage.get('mainPrompt', CONFIG.defaultMainPrompt));
-
     mainPromptGroup.appendChild(mainPromptLabel);
     mainPromptGroup.appendChild(mainPromptTextarea);
 
-    // UC 프롬프트
-    const ucPromptGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const ucPromptLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'uc-prompt'
-    }, 'UC Prompt:');
-
+    // UC 프롬프트 (Negative)
+    const ucPromptGroup = Utils.createElement('div', { className: 'form-group' });
+    const ucPromptLabel = Utils.createElement('label', { className: 'form-label', for: 'uc-prompt' }, 'UC Prompt (Negative):');
     const ucPromptTextarea = Utils.createElement('textarea', {
-        className: 'form-textarea',
-        id: 'uc-prompt',
-        oninput: (e) => {
-            Storage.set('ucPrompt', e.target.value);
-        }
+        className: 'form-textarea', id: 'uc-prompt',
+        oninput: (e) => Storage.set('ucPrompt', e.target.value)
     }, Storage.get('ucPrompt', CONFIG.defaultUcPrompt));
-
     ucPromptGroup.appendChild(ucPromptLabel);
     ucPromptGroup.appendChild(ucPromptTextarea);
 
+    // 모델 선택
+    const modelGroup = Utils.createElement('div', { className: 'form-group' });
+    const modelLabel = Utils.createElement('label', { className: 'form-label', for: 'image-model' }, 'Model:');
+    const modelSelect = Utils.createElement('select', {
+        className: 'form-select', id: 'image-model',
+        onchange: (e) => Storage.set('imageModel', e.target.value)
+    });
+    const modelOptions = [
+        { value: 'nai-diffusion-4-5-full', text: 'NAI Diffusion Anime V4.5 (Full)'},
+        { value: 'nai-diffusion-4-5-curated', text: 'NAI Diffusion Anime V4.5 (Curated)'},
+        { value: 'nai-diffusion-4-full', text: 'NAI Diffusion Anime V4 (Full)'},
+        { value: 'nai-diffusion-4-curated-preview', text: 'NAI Diffusion Anime V4 (Curated)'},
+        { value: 'nai-diffusion-3', text: 'NAI Diffusion Anime V3'},
+        { value: 'nai-diffusion-2', text: 'NAI Diffusion Anime V2'},
+        { value: 'nai-diffusion-furry-3', text: 'NAI Diffusion Furry V3'}
+    ];
+    const selectedModel = Storage.get('imageModel', CONFIG.imageGeneration.model);
+    modelOptions.forEach(option => {
+        const optionElement = Utils.createElement('option', { value: option.value, selected: option.value === selectedModel }, option.text);
+        modelSelect.appendChild(optionElement);
+    });
+    modelSelect.value = selectedModel;
+    modelGroup.appendChild(modelLabel);
+    modelGroup.appendChild(modelSelect);
+
     // 삽화 사이즈
-    const sizeGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const sizeLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-size'
-    }, 'Image Size:');
-
+    const sizeGroup = Utils.createElement('div', { className: 'form-group' });
+    const sizeLabel = Utils.createElement('label', { className: 'form-label', for: 'image-size' }, 'Image Size:');
     const sizeSelect = Utils.createElement('select', {
-        className: 'form-select',
-        id: 'image-size',
-        onchange: (e) => {
-            Storage.set('imageSize', e.target.value);
-        }
+        className: 'form-select', id: 'image-size',
+        onchange: (e) => Storage.set('imageSize', e.target.value)
     });
-
     const sizeOptions = [
         { value: 'Portrait', label: 'Portrait (832x1216)' },
         { value: 'Landscape', label: 'Landscape (1216x832)' },
         { value: 'Square', label: 'Square (1024x1024)' }
     ];
-
     const selectedSize = Storage.get('imageSize', 'Portrait');
-
     sizeOptions.forEach(option => {
-        const optionElement = Utils.createElement('option', {
-            value: option.value,
-            selected: option.value === selectedSize
-        }, option.label);
-
+        const optionElement = Utils.createElement('option', { value: option.value, selected: option.value === selectedSize }, option.label);
         sizeSelect.appendChild(optionElement);
     });
     sizeSelect.value = selectedSize;
-
     sizeGroup.appendChild(sizeLabel);
     sizeGroup.appendChild(sizeSelect);
 
     // 샘플러
-    const samplerGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const samplerLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-sampler'
-    }, 'Sampler:');
-
+    const samplerGroup = Utils.createElement('div', { className: 'form-group' });
+    const samplerLabel = Utils.createElement('label', { className: 'form-label', for: 'image-sampler' }, 'Sampler:');
     const samplerSelect = Utils.createElement('select', {
-        className: 'form-select',
-        id: 'image-sampler',
-        onchange: (e) => {
-            Storage.set('imageSampler', e.target.value);
-        }
+        className: 'form-select', id: 'image-sampler',
+        onchange: (e) => Storage.set('imageSampler', e.target.value)
     });
-
-    const samplerOptions = [
-        'k_euler_ancestral',
-        'k_dpmpp_2s_ancestral',
-        'k_euler',
-        'k_dpm_2',
-        'k_dpm_2_ancestral',
-        'k_dpmpp_2m',
-        'k_dpmpp_sde'
-    ];
-
-    const selectedSampler = Storage.get('imageSampler', 'k_euler_ancestral');
-
+    const samplerOptions = [ 'k_euler_ancestral', 'k_euler', 'k_dpmpp_2m', 'k_dpmpp_sde', 'k_dpmpp_2s_ancestral', 'k_dpm_fast', 'ddim' ];
+    const selectedSampler = Storage.get('imageSampler', CONFIG.imageGeneration.sampler);
     samplerOptions.forEach(option => {
-        const optionElement = Utils.createElement('option', {
-            value: option,
-            selected: option === selectedSampler
-        }, option);
-
+        const optionElement = Utils.createElement('option', { value: option, selected: option === selectedSampler }, option);
         samplerSelect.appendChild(optionElement);
     });
     samplerSelect.value = selectedSampler;
-
     samplerGroup.appendChild(samplerLabel);
     samplerGroup.appendChild(samplerSelect);
 
-    // 노이즈 스케쥴
-    const noiseGroup = Utils.createElement('div', {
-        className: 'form-group'
+    // 스케줄러 (추가됨)
+    const schedulerGroup = Utils.createElement('div', { className: 'form-group' });
+    const schedulerLabel = Utils.createElement('label', { className: 'form-label', for: 'image-scheduler' }, 'Scheduler:');
+    const schedulerSelect = Utils.createElement('select', {
+        className: 'form-select', id: 'image-scheduler',
+        onchange: (e) => Storage.set('imageScheduler', e.target.value)
     });
-
-    const noiseLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-noise'
-    }, 'Noise Schedule:');
-
-    const noiseSelect = Utils.createElement('select', {
-        className: 'form-select',
-        id: 'image-noise',
-        onchange: (e) => {
-            Storage.set('imageNoiseSchedule', e.target.value);
-        }
+    const schedulerOptions = [ 'karras', 'native', 'exponential', 'polyexponential' ];
+    const selectedScheduler = Storage.get('imageScheduler', CONFIG.imageGeneration.scheduler);
+    schedulerOptions.forEach(option => {
+        const optionElement = Utils.createElement('option', { value: option, selected: option === selectedScheduler }, option);
+        schedulerSelect.appendChild(optionElement);
     });
-
-    const noiseOptions = [
-        'karras',
-        'exponential',
-        'polyexponential'
-    ];
-
-    const selectedNoise = Storage.get('imageNoiseSchedule', 'karras');
-
-    noiseOptions.forEach(option => {
-        const optionElement = Utils.createElement('option', {
-            value: option,
-            selected: option === selectedNoise
-        }, option);
-
-        noiseSelect.appendChild(optionElement);
-    });
-    noiseSelect.value = selectedNoise;
-
-    noiseGroup.appendChild(noiseLabel);
-    noiseGroup.appendChild(noiseSelect);
+    schedulerSelect.value = selectedScheduler;
+    schedulerGroup.appendChild(schedulerLabel);
+    schedulerGroup.appendChild(schedulerSelect);
 
     // 스텝
-    const stepsGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const stepsLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-steps'
-    }, 'Steps:');
-
+    const stepsGroup = Utils.createElement('div', { className: 'form-group' });
+    const stepsLabel = Utils.createElement('label', { className: 'form-label', for: 'image-steps' }, 'Steps:');
     const stepsInput = Utils.createElement('input', {
-        className: 'form-input',
-        id: 'image-steps',
-        type: 'number',
-        min: '1',
-        max: '50',
-        value: Storage.get('imageSteps', 28),
-        oninput: (e) => {
-            Storage.set('imageSteps', e.target.value);
-        }
+        className: 'form-input', id: 'image-steps', type: 'number', min: '1', max: '50',
+        value: Storage.get('imageSteps', CONFIG.imageGeneration.steps),
+        oninput: (e) => Storage.set('imageSteps', e.target.value)
     });
-
     stepsGroup.appendChild(stepsLabel);
     stepsGroup.appendChild(stepsInput);
 
     // 가이던스 스케일
-    const scaleGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const scaleLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-scale'
-    }, 'Guidance Scale:');
-
+    const scaleGroup = Utils.createElement('div', { className: 'form-group' });
+    const scaleLabel = Utils.createElement('label', { className: 'form-label', for: 'image-scale' }, 'Guidance Scale:');
     const scaleInput = Utils.createElement('input', {
-        className: 'form-input',
-        id: 'image-scale',
-        type: 'number',
-        min: '1',
-        max: '20',
-        step: '0.1',
-        value: Storage.get('imageScale', 6),
-        oninput: (e) => {
-            Storage.set('imageScale', e.target.value);
-        }
+        className: 'form-input', id: 'image-scale', type: 'number', min: '1', max: '20', step: '0.1',
+        value: Storage.get('imageScale', CONFIG.imageGeneration.scale),
+        oninput: (e) => Storage.set('imageScale', e.target.value)
     });
-
     scaleGroup.appendChild(scaleLabel);
     scaleGroup.appendChild(scaleInput);
 
-    // 가이던스 리스케일
-    const rescaleGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
+    // Smea/Smea DYN/Decrisper (추가됨)
+    const extraOptionsGroup = Utils.createElement('div', { className: 'form-group' });
 
-    const rescaleLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-cfg-rescale'
-    }, 'CFG Rescale:');
+    const smCheckbox = Utils.createElement('input', { className: 'form-checkbox', id: 'image-sm', type: 'checkbox', onchange: (e) => Storage.set('imageSm', e.target.checked) });
+    smCheckbox.checked = Storage.get('imageSm', CONFIG.imageGeneration.sm);
+    const smLabel = Utils.createElement('label', { for: 'image-sm' }, 'Smea');
 
-    const rescaleInput = Utils.createElement('input', {
-        className: 'form-input',
-        id: 'image-cfg-rescale',
-        type: 'number',
-        min: '0',
-        max: '1',
-        step: '0.01',
-        value: Storage.get('imageCfgRescale', 0),
-        oninput: (e) => {
-            Storage.set('imageCfgRescale', e.target.value);
-        }
-    });
+    const smDynCheckbox = Utils.createElement('input', { className: 'form-checkbox', id: 'image-sm-dyn', type: 'checkbox', onchange: (e) => Storage.set('imageSmDyn', e.target.checked) });
+    smDynCheckbox.checked = Storage.get('imageSmDyn', CONFIG.imageGeneration.sm_dyn);
+    const smDynLabel = Utils.createElement('label', { for: 'image-sm-dyn' }, 'Smea DYN');
 
-    rescaleGroup.appendChild(rescaleLabel);
-    rescaleGroup.appendChild(rescaleInput);
+    const decrisperCheckbox = Utils.createElement('input', { className: 'form-checkbox', id: 'image-decrisper', type: 'checkbox', onchange: (e) => Storage.set('imageDecrisper', e.target.checked) });
+    decrisperCheckbox.checked = Storage.get('imageDecrisper', CONFIG.imageGeneration.decrisper);
+    const decrisperLabel = Utils.createElement('label', { for: 'image-decrisper' }, 'Decrisper');
 
-    // UC 프리셋
-    const ucPresetGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const ucPresetLabel = Utils.createElement('label', {
-        className: 'form-label',
-        for: 'image-uc-preset'
-    }, 'UC Preset:');
-
-    const ucPresetSelect = Utils.createElement('select', {
-        className: 'form-select',
-        id: 'image-uc-preset',
-        onchange: (e) => {
-            Storage.set('imageUcPreset', e.target.value);
-        }
-    });
-
-    const ucPresetOptions = [
-        { value: 'Preset_None', label: 'None' },
-        { value: 'Preset_Light', label: 'Light' },
-        { value: 'Preset_Medium', label: 'Medium' },
-        { value: 'Preset_Heavy', label: 'Heavy' },
-        { value: 'Preset_Full', label: 'Full' }
-    ];
-
-    const selectedUcPreset = Storage.get('imageUcPreset', 'Preset_Heavy');
-
-    ucPresetOptions.forEach(option => {
-        const optionElement = Utils.createElement('option', {
-            value: option.value,
-            selected: option.value === selectedUcPreset
-        }, option.label);
-
-        ucPresetSelect.appendChild(optionElement);
-    });
-    ucPresetSelect.value = selectedUcPreset;
-
-    ucPresetGroup.appendChild(ucPresetLabel);
-    ucPresetGroup.appendChild(ucPresetSelect);
-
-    // 퀄리티 토글
-    const qualityGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const qualityCheckbox = Utils.createElement('input', {
-        className: 'form-checkbox',
-        id: 'image-quality',
-        type: 'checkbox',
-        onchange: (e) => {
-            Storage.set('imageQualityToggle', e.target.checked);
-        }
-    });
-    qualityCheckbox.checked = Storage.get('imageQualityToggle', true);
-
-    const qualityLabel = Utils.createElement('label', {
-        for: 'image-quality'
-    }, 'Quality Toggle');
-
-    qualityGroup.appendChild(qualityCheckbox);
-    qualityGroup.appendChild(qualityLabel);
-
-
-    // 레거시 모드
-    const legacyGroup = Utils.createElement('div', {
-        className: 'form-group'
-    });
-
-    const legacyCheckbox = Utils.createElement('input', {
-        className: 'form-checkbox',
-        id: 'image-legacy',
-        type: 'checkbox',
-        onchange: (e) => {
-            Storage.set('imageLegacy', e.target.checked);
-        }
-    });
-    legacyCheckbox.checked = Storage.get('imageLegacy', true);
-
-    const legacyLabel = Utils.createElement('label', {
-        for: 'image-legacy'
-    }, 'Legacy Mode');
-
-    legacyGroup.appendChild(legacyCheckbox);
-    legacyGroup.appendChild(legacyLabel);
+    extraOptionsGroup.appendChild(smCheckbox);
+    extraOptionsGroup.appendChild(smLabel);
+    extraOptionsGroup.appendChild(smDynCheckbox);
+    extraOptionsGroup.appendChild(smDynLabel);
+    extraOptionsGroup.appendChild(decrisperCheckbox);
+    extraOptionsGroup.appendChild(decrisperLabel);
 
     section.appendChild(title);
     section.appendChild(promptGroup);
     section.appendChild(mainPromptGroup);
     section.appendChild(ucPromptGroup);
+    section.appendChild(modelGroup);
     section.appendChild(sizeGroup);
     section.appendChild(samplerGroup);
-    section.appendChild(noiseGroup);
+    section.appendChild(schedulerGroup);
     section.appendChild(stepsGroup);
     section.appendChild(scaleGroup);
-    section.appendChild(rescaleGroup);
-    section.appendChild(ucPresetGroup);
-    section.appendChild(qualityGroup);
-    section.appendChild(legacyGroup);
+    section.appendChild(extraOptionsGroup);
 
     return section;
 },
-
 
         // 변환 설정 섹션 생성
         createTransformSettingsSection: function() {
@@ -3544,142 +3350,131 @@ createImageSettingsSection: function() {
                     statusIndicator.style.backgroundColor = 'red';
                 }
             },
+/**
+ * NovelAI로 이미지 생성 (기존 구조 유지)
+ * @param {string} imagePrompt - 이미지 프롬프트
+ */
+generateImageWithNovelAI: async function(imagePrompt, buttonElement) {
+    Utils.toggleLoading(true, buttonElement);
 
-            /**
-             * NovelAI로 이미지 생성
-             * @param {string} imagePrompt - 이미지 프롬프트
-             */
-            generateImageWithNovelAI: async function(imagePrompt, buttonElement) {
-                Utils.toggleLoading(true, buttonElement);
+    try {
+        // JSZip 로드
+        const JSZip = await Utils.loadJSZip();
 
-                try {
-                    // JSZip 로드
-                    const JSZip = await Utils.loadJSZip();
+        const apiKey = Storage.get('novelaiApiKey', '');
+        const mainPrompt = Storage.get('mainPrompt', CONFIG.defaultMainPrompt);
+        const ucPrompt = Storage.get('ucPrompt', CONFIG.defaultUcPrompt);
+        const imageSize = Storage.get('imageSize', 'Portrait');
 
-                    const apiKey = Storage.get('novelaiApiKey', '');
-                    const model = "nai-diffusion-4-full";
-                    const imageSize = Storage.get('imageSize', 'Portrait');
-                    const mainPrompt = Storage.get('mainPrompt', CONFIG.defaultMainPrompt);
-                    const ucPrompt = Storage.get('ucPrompt', CONFIG.defaultUcPrompt);
+        // 설정 창에서 최신 값 가져오기
+        const model = Storage.get('imageModel', CONFIG.imageGeneration.model);
+        const sampler = Storage.get('imageSampler', CONFIG.imageGeneration.sampler);
+        const scheduler = Storage.get('imageScheduler', CONFIG.imageGeneration.scheduler);
+        const steps = parseInt(Storage.get('imageSteps', CONFIG.imageGeneration.steps));
+        const scale = parseFloat(Storage.get('imageScale', CONFIG.imageGeneration.scale));
+        const sm = Storage.get('imageSm', CONFIG.imageGeneration.sm);
+        const sm_dyn = Storage.get('imageSmDyn', CONFIG.imageGeneration.sm_dyn);
+        const decrisper = Storage.get('imageDecrisper', CONFIG.imageGeneration.decrisper);
 
-                    // 설정값 가져오기
-                    const sampler = Storage.get('imageSampler', CONFIG.imageGeneration.sampler);
-                    const guidance = parseFloat(Storage.get('imageGuidance', CONFIG.imageGeneration.guidance));
-                    const guidanceRescale = parseFloat(Storage.get('imageGuidanceRescale', CONFIG.imageGeneration.guidanceRescale));
-                    const noiseSchedule = Storage.get('imageNoiseSchedule', CONFIG.imageGeneration.noiseSchedule);
-                    const steps = parseInt(Storage.get('imageSteps', CONFIG.imageGeneration.steps));
-                    const ucPreset = parseInt(Storage.get('imageUcPreset', CONFIG.imageGeneration.ucPreset));
-                    const legacy = Storage.get('imageLegacy', true);
+        // 이미지 크기에 따른 width, height 설정
+        let width, height;
+        switch (imageSize) {
+            case 'Portrait':
+                width = 832;
+                height = 1216;
+                break;
+            case 'Landscape':
+                width = 1216;
+                height = 832;
+                break;
+            case 'Square':
+                width = 1024;
+                height = 1024;
+                break;
+        }
 
-                    // 이미지 크기에 따른 width, height 설정
-                    let width, height;
-                    switch (imageSize) {
-                        case 'Portrait':
-                            width = 832;
-                            height = 1216;
-                            break;
-                        case 'Landscape':
-                            width = 1216;
-                            height = 832;
-                            break;
-                        case 'Square':
-                            width = 1024;
-                            height = 1024;
-                            break;
-                    }
+        const requestData = {
+            action: 'generate',
+            model: model,
+            parameters: {
+                width: width,
+                height: height,
+                scale: scale,
+                sampler: sampler,
+                steps: steps,
+                seed: Math.floor(Math.random() * 9999999999),
+                n_samples: 1,
+                
+                legacy: false, 
+                noise_schedule: scheduler,
+                
+                // 추가 파라미터 적용
+                sm: sm,
+                sm_dyn: sm_dyn,
+                decrisper: decrisper,
 
-                    const requestData = {
-                        action: 'generate',
-                        input: `${mainPrompt}, ${imagePrompt}`,
-                        model: model,
-                        parameters: {
-                            width: width,
-                            height: height,
-                            scale: guidance,
-                            sampler: sampler,
-                            steps: steps,
-                            seed: Math.floor(Math.random() * 9999999999),
-                            n_samples: 1,
-                            ucPreset: ucPreset,
-                            qualityToggle: false,
-                            controlnet_strength: 1,
-                            legacy: legacy,
-                            add_original_image: false,
-                            guidance_rescale: guidanceRescale,
-                            noise_schedule: noiseSchedule,
-                            legacy_v3_extend: false,
-                            v4_prompt: {
-                                caption: {
-                                    base_caption: `${mainPrompt}, ${imagePrompt}`,
-                                    char_captions: [],
-                                },
-                                use_coords: false,
-                                use_order: true,
-                            },
-                            v4_negative_prompt: {
-                                caption: {
-                                    base_caption: ucPrompt,
-                                    char_captions: [],
-                                },
-                            },
-                        }
-                    };
+                v4_prompt: {
+                    caption: {
+                        base_caption: `${mainPrompt}, ${imagePrompt}`,
+                        char_captions: [],
+                    },
+                    use_coords: false,
+                    use_order: true,
+                },
+                v4_negative_prompt: {
+                    caption: {
+                        base_caption: ucPrompt,
+                        char_captions: [],
+                    },
+                },
+            }
+        };
 
-                    const response = await fetch('https://image.novelai.net/ai/generate-image', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData),
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`NovelAI API 호출 실패: ${response.status} - ${errorText}`);
-                    }
-
-                    // 응답을 ArrayBuffer로 받기
-                    const arrayBuffer = await response.arrayBuffer();
-
-                    // JSZip으로 압축 풀기
-                    const zip = await JSZip.loadAsync(arrayBuffer);
-
-                    // ZIP 파일 내의 이미지 찾기 (첫 번째 PNG 파일 가정)
-                    let imageBlob = null;
-                    let imageName = null;
-
-                    // ZIP 내의 모든 파일 확인
-                    let foundImage = false;
-                    for (const filename of Object.keys(zip.files)) {
-                        if (filename.toLowerCase().endsWith('.png')) {
-                            // PNG 파일 찾음
-                            const fileData = await zip.files[filename].async('blob');
-                            imageBlob = fileData;
-                            imageName = filename;
-                            foundImage = true;
-                            break;
-                        }
-                    }
-
-                    if (!foundImage) {
-                        alert("ZIP 파일 내에서 PNG 이미지를 찾을 수 없습니다.");
-                        throw new Error('ZIP 파일 내에서 PNG 이미지를 찾을 수 없습니다.');
-                    }
-
-                    // Blob URL 생성
-                    const imageUrl = URL.createObjectURL(imageBlob);
-
-                    // 이미지 표시
-                    this.displayImage(imageUrl, imagePrompt, imageName);
-
-                } catch (error) {
-                    console.error("NovelAI API 호출 오류:", error);
-                    alert("삽화 생성 중 오류가 발생했습니다. 상세 오류: " + error.message);
-                } finally {
-                    Utils.toggleLoading(false, buttonElement);
-                }
+        const response = await fetch('https://image.novelai.net/ai/generate-image', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'accept': 'application/x-zip-compressed'
             },
+            body: JSON.stringify(requestData),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`NovelAI API 호출 실패: ${response.status} - ${errorText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer);
+
+        let imageBlob = null;
+        let imageName = null;
+        let foundImage = false;
+
+        for (const filename of Object.keys(zip.files)) {
+            if (filename.toLowerCase().endsWith('.png')) {
+                imageBlob = await zip.files[filename].async('blob');
+                imageName = filename;
+                foundImage = true;
+                break;
+            }
+        }
+
+        if (!foundImage) {
+            throw new Error('ZIP 파일 내에서 PNG 이미지를 찾을 수 없습니다.');
+        }
+
+        const imageUrl = URL.createObjectURL(imageBlob);
+        this.displayImage(imageUrl, imagePrompt, imageName);
+
+    } catch (error) {
+        console.error("NovelAI API 호출 오류:", error);
+        alert("삽화 생성 중 오류가 발생했습니다. 상세 오류: " + error.message);
+    } finally {
+        Utils.toggleLoading(false, buttonElement);
+    }
+},
 
             /**
              * 생성된 이미지 표시
