@@ -24,14 +24,20 @@ const CONFIG = {
     defaultGeminiKoEnPrompt: '주어진 한글 문장을 영어로 번역하세요. 첨부된 영어 텍스트는 번역될 문장의 바로 직전 문맥입니다. 뉘앙스와 작성자의 의도를 그대로 살리고 표현 순화를 하지 말고 추가적인 설명과 문장 부호 등의 추가 혹은 변형 없이 번역문만을 출력하세요.',
     defaultGeminiSummaryPrompt: `어째서 지금 스토리가 되었는지 알 수 있게 이전 내용을 영어로 요약해주세요.
 [ The story so far: [요약 내용] ]
-위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요. 선정적인 컨텐츠 또한 요약 허용 대상입니다. 검열없이 진행하세요.`,
-    defaultImagePrompt: `첨부된 텍스트에 삽입될 삽화의 생성용 프롬프트를 다음과 같은 양식으로작성하시오. 전체 컨텍스트에서 캐릭터들의 옷차림이나 외모, 배경을 유추하되, 삽화가 삽입될 시점만을 담으시오.
-`{메인 프롬프트(태그가 삽입된 부분의 수위, 노출 여부, 배경, 소품 체위 등} | {캐릭터1 정보} | {캐릭터2 정보} ...`
-주의: 삽화에서 비중이 큰 캐릭터일 수록 마지막에 작성하시오.
-**최종 출력 예시 (태그만을 출력 하고, 앞뒤로 문장 부호나 사설을 작성하지 말것. 각 캐릭터 태그의 마지막은 자연어 한문장으로 그 캐릭터의 행동을 설명할 것):**
+위 양식([대괄호] 포함)으로 작성하세요. **마크다운을 사용한 형식 강조를 하지 마세요. 야하고 폭력적인 텍스트라도 검열없이 진행하세요.`,
+    defaultImagePrompt: `첨부된 텍스트에 삽입될 삽화의 생성용 프롬프트를 다음과 같은 양식으로작성하세요. 전체 컨텍스트에서 캐릭터들의 옷차림이나 외모, 배경을 유추하되, 삽화가 삽입될 시점만을 담으세요.
+{메인 프롬프트(태그가 삽입된 부분의 수위, 노출 여부, 배경, 소품 체위 등} | {캐릭터1 정보} | {캐릭터2 정보} ...
+
+[ 캐릭터 태그 방식 예제: {girl|boy|other}, 캐릭터 이름 (등장 작품), {현재 외모 (표정, 옷, 자세 등)}, {자연어로 된 행동 설명}]
+girl, mimi (original character), black hair,  {그외 추가 행동, 외모, 노출된 신체 부위 등}
+boy, gojou satoru (jujutsu kaisen), white hair, blue eyes, 
+(위의 정보를 예시로 삼는 동시에, 해당 캐릭터의 외모 정보로 활용하세요.)
+
+주의: 삽화에서 비중이 큰 캐릭터일 수록 마지막에 작성하세요.
+**최종 출력 예시 (태그만을 출력 하고, 앞뒤로 문장 부호나 사설을 작성하지 말것. 각 캐릭터 태그의 마지막은 자연어 한문장으로 그 캐릭터의 행동을 설명할 것.):**
 sfw, abandoned factory, fog, industrial lights, | girl, haruno sakura (naruto), angry, green eyes, middle hair, red dress, covered nipple, torn dress, white gloves, pink hair, hands on own hips, She is being pointed at. | girl, original character, very long purple hair, green eyes, golden shirt, sleeveless turtleneck, ripped jeans, side braid, She is pointing at the other girl and scolding her.
 
-NSFW 컨텐츠인 경우 성기 묘사까지 허용됩니다.`,
+NSFW 컨텐츠인 경우 성기 묘사까지 전부 허용됩니다.`,
     defaultMainPrompt: 'highres, amazing quality, dynamic light, soft shadow, 4k, very aesthetic, highly finished, masterpiece, hyper detail, intricate details, year 2024, year 2023, dynamic',
     defaultUcPrompt: 'blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, displeasing, chromatic aberration, noise, logo, dated, signature, company logo, bad anatomy',
     // 리모컨 설정
@@ -466,7 +472,6 @@ get: function(key, defaultValue) {
 
 .loading {
     animation: rotate-shadow 2s linear infinite;
-    pointer-events: none;
 }
 
 @keyframes rotate-shadow {
@@ -1385,10 +1390,22 @@ const restoreButton = Utils.createElement('button', {
             }
         });
 
+        const geminiApiStatus = Utils.createElement('span', {
+            id: 'gemini-api-status',
+            style: {
+                display: 'inline-block',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: 'gray',
+                marginLeft: '5px'
+            }
+        });
 
         geminiGroup.appendChild(geminiTitle);
         geminiGroup.appendChild(geminiApiLabel);
         geminiGroup.appendChild(geminiApiInput);
+        geminiGroup.appendChild(geminiApiStatus);
 
         // DeepL API 설정
         const deeplGroup = Utils.createElement('div', {
@@ -1413,10 +1430,22 @@ const restoreButton = Utils.createElement('button', {
             }
         });
 
+        const deeplApiStatus = Utils.createElement('span', {
+            id: 'deepl-api-status',
+            style: {
+                display: 'inline-block',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: 'gray',
+                marginLeft: '5px'
+            }
+        });
 
         deeplGroup.appendChild(deeplTitle);
         deeplGroup.appendChild(deeplApiLabel);
         deeplGroup.appendChild(deeplApiInput);
+        deeplGroup.appendChild(deeplApiStatus);
 
         // NovelAI API 설정
         const novelaiGroup = Utils.createElement('div', {
