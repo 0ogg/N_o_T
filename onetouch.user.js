@@ -3322,7 +3322,7 @@ createImageSettingsSection: function() {
              * 삽화 생성
              */
             generateImage: function(buttonElement) {
-                Features.Translation.extractText(8000, 'imagePrompt', buttonElement);
+                Features.Translation.extractText(80000, 'imagePrompt', buttonElement);
             },
 
             /**
@@ -3415,6 +3415,7 @@ generateImageWithNovelAI: async function(imagePrompt, buttonElement) {
                 sm_dyn: sm_dyn,
                 decrisper: decrisper,
 
+                ucPreset: 1,
                 v4_prompt: {
                     caption: {
                         base_caption: `${mainPrompt}, ${imagePrompt}`,
