@@ -3194,6 +3194,8 @@ createImageSettingsSection: function() {
                         break;
                     case 'imagePrompt':
                         prompt = Storage.get('imagePrompt', CONFIG.defaultImagePrompt);
+				text = `${text}\n(삽화 삽입 지점)\n${prompt}`;
+				prompt = '';
                         break;
                     default:
                         prompt = '다음 텍스트를 처리해주세요.';
@@ -3276,7 +3278,7 @@ createImageSettingsSection: function() {
                 for (let i = paragraphs.length - 1; i >= 0; i--) {
                     const paragraphText = paragraphs[i].textContent;
                     pText = paragraphText + '\n' + pText;
-                    if (pText.length >= 1000) {
+                    if (pText.length >= 4000) {
                         break;
                     }
                 }
@@ -3305,7 +3307,7 @@ createImageSettingsSection: function() {
              */
             generateSummary: function(buttonElement) {
                 Features.Translation.loadAllContent().then(() => {
-                    Features.Translation.extractText(Storage.get('longExtraction', '1000000'), 'summary', buttonElement);
+                    Features.Translation.extractText('9999999999', 'summary', buttonElement);
                 });
             }
         },
@@ -3320,7 +3322,7 @@ createImageSettingsSection: function() {
              * 삽화 생성
              */
             generateImage: function(buttonElement) {
-                Features.Translation.extractText(3500, 'imagePrompt', buttonElement);
+                Features.Translation.extractText(8000, 'imagePrompt', buttonElement);
             },
 
             /**
