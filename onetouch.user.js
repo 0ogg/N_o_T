@@ -887,12 +887,30 @@ h1, h2, h3 {
             const translateButton = Utils.createElement('div', {
                 className: 'remote-button',
                 id: 'translate-button',
-onclick: (e) => {
-    const clickedButton = e.currentTarget; // 클릭된 버튼 요소 캡처
-    Features.Translation.extractAndTranslate(clickedButton);
-}
-            }, 'T');
+                onclick: (e) => {
+                    const clickedButton = e.currentTarget; // 클릭된 버튼은 'T' 버튼
 
+                    // 1. 항상 번역 기능을 먼저 실행합니다. (로딩 애니메이션이 'T' 버튼에 적용됨)
+                    Features.Translation.extractAndTranslate(clickedButton);
+
+                    // 2. "번역 시 삽화 함께 생성" 옵션이 켜져 있는지 확인합니다.
+                    const shouldGenerateImage = Storage.get('imageOnTranslate', false);
+                    const isImageGenerationEnabled = Storage.get('imageGenerationEnabled', false);
+
+                    // 3. 옵션이 켜져 있다면, 삽화 생성 기능도 호출합니다.
+                    if (shouldGenerateImage && isImageGenerationEnabled) {
+                        console.log("번역과 함께 삽화 생성을 시작합니다.");
+                        // 이미지(I) 버튼을 찾아서 로딩 애니메이션을 적용하도록 전달합니다.
+                        const imageButton = document.getElementById('image-button');
+                        if (imageButton) {
+                            Features.Image.generateImage(imageButton);
+                        } else {
+                            // imageButton이 없는 비상 상황을 대비해 null을 전달하여 오류를 방지합니다.
+                            Features.Image.generateImage(null);
+                        }
+                    }
+                }
+            }, 'T');
             // 삽화 버튼
             const imageButton = Utils.createElement('div', {
                 className: 'remote-button',
@@ -1998,6 +2016,19 @@ createImageSettingsSection: function() {
 
     const title = Utils.createElement('h3', {}, 'Image Generation Settings');
 
+    // NEW: 번역 시 삽화 동시 생성 체크박스 추가
+    const simultaneousGenerationGroup = Utils.createElement('div', { className: 'form-group' });
+    const simultaneousGenerationCheckbox = Utils.createElement('input', {
+        className: 'form-checkbox',
+        id: 'image-on-translate-checkbox',
+        type: 'checkbox',
+        onchange: (e) => Storage.set('imageOnTranslate', e.target.checked)
+    });
+    simultaneousGenerationCheckbox.checked = Storage.get('imageOnTranslate', false); // 저장된 값 불러오기
+    const simultaneousGenerationLabel = Utils.createElement('label', { for: 'image-on-translate-checkbox' }, '번역 시 삽화 함께 생성하기');
+
+    simultaneousGenerationGroup.appendChild(simultaneousGenerationCheckbox);
+    simultaneousGenerationGroup.appendChild(simultaneousGenerationLabel);
     // 삽화 프롬프트 생성용 프롬프트
     const promptGroup = Utils.createElement('div', { className: 'form-group' });
     const promptLabel = Utils.createElement('label', { className: 'form-label', for: 'image-prompt' }, 'Image Prompt (Gemini):');
@@ -2154,6 +2185,7 @@ createImageSettingsSection: function() {
     extraOptionsGroup.appendChild(decrisperLabel);
 
     section.appendChild(title);
+	section.appendChild(simultaneousGenerationGroup);
     section.appendChild(promptGroup);
     section.appendChild(mainPromptGroup);
     section.appendChild(ucPromptGroup);
