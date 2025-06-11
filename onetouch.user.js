@@ -3178,7 +3178,7 @@ createImageSettingsSection: function() {
                         break;
                     case 'imagePrompt':
                         prompt = Storage.get('imagePrompt', CONFIG.defaultImagePrompt);
-				text = `${text}\n(삽화 삽입 지점)\n${prompt}`;
+				text = `${text}(삽화 삽입 지점)\n${prompt}`;
 				prompt = '';
                         break;
                     default:
