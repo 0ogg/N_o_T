@@ -3210,7 +3210,7 @@ createImageSettingsSection: function() {
                             body: JSON.stringify({
                                 contents: [{
                                     parts: [{
-                                        text: `${prompt}\n\n${text}`
+                                        text: `${text}\n\n${prompt}`
                                     }]
                                 }],
                                 generationConfig: {
