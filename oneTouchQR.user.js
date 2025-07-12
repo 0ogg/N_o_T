@@ -479,8 +479,8 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
             return [
                 {
                     id: 'ai-default-gemini', name: '기본 Gemini', type: 'gemini',
-                    apiKey: 'AIzaSyCdaMlLjodr1CxcNGJU4c2WfvNg5NZBJyI', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/', category: '기본 기능',
-                    parameters: { model: 'gemini-1.5-flash-latest', temperature: 0.7, topP: 1, topK: 32 }
+                    apiKey: '', endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/', category: '기본 기능',
+                    parameters: { model: 'gemini-2.0-flash', temperature: 0.7, topP: 1, topK: 32 }
                 },
                 {
                     id: 'ai-default-novelai', name: '기본 NovelAI', type: 'novelai',
