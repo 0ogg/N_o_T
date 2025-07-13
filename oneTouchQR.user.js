@@ -143,16 +143,17 @@ toggleLoading: function(isLoading, buttonElement) {
  * @param {Function} onPositionChange - 위치 변경 시 콜백 함수
  * @param {string} storageKey - 위치 저장에 사용할 로컬 스토리지 키
  */
+ // [교체할 대상: const Utils = { ... }; 안의 makeDraggable 함수]
+
 makeDraggable: function(element, handle = null, onPositionChange = null, storageKey = null) {
     const dragHandle = handle || element;
-    let isDragging = false;
+    let dragTimeout; // 꾹 누르는 대기 시간을 위한 타이머 ID
+    let isPrimedForDrag = false; // 대기 시간이 지나 드래그가 준비되었는지 여부
+    let isMoving = false; // 요소가 실제로 이동했는지 여부를 추적
     let startX, startY, startRight, startBottom;
-    let dragTimeout;
 
-    // 요소 ID 기반으로 스토리지 키 생성 (없으면 기본값 사용)
     const positionKey = storageKey || (element.id ? `position_${element.id}` : "tBallP");
 
-    // 로컬 스토리지에서 위치 정보를 불러오고 적용합니다.
     const savedPosition = localStorage.getItem(positionKey);
     if (savedPosition) {
         try {
@@ -164,122 +165,96 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
         }
     }
 
-    // 마우스 이벤트
-    dragHandle.addEventListener('mousedown', function(e) {
-        if (isDragging) return;
+    const onMouseDown = (e) => {
+        if (e.button !== 0 && e.type !== 'touchstart') return;
 
-        dragTimeout = setTimeout(function() {
-            isDragging = true;
+        isPrimedForDrag = false;
+        isMoving = false;
 
-            // 시작 위치 저장 (마우스 위치와 요소의 현재 right/bottom 값)
-            startX = e.clientX;
-            startY = e.clientY;
-            startRight = parseInt(element.style.right) || 0;
-            startBottom = parseInt(element.style.bottom) || 0;
-        }, 300);
+        const eventCoord = e.touches ? e.touches[0] : e;
+        startX = eventCoord.clientX;
+        startY = eventCoord.clientY;
 
-        e.preventDefault();
-    });
+        const style = window.getComputedStyle(element);
+        startRight = parseInt(style.right, 10) || 0;
+        startBottom = parseInt(style.bottom, 10) || 0;
 
-    document.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        e.preventDefault();
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('touchend', onMouseUp);
 
-        // 마우스 이동 거리 계산
-        const dx = startX - e.clientX;
-        const dy = startY - e.clientY;
+        // 300ms 대기 후 드래그 준비 상태로 전환
+        dragTimeout = setTimeout(() => {
+            isPrimedForDrag = true;
+            // 드래그가 준비된 후에만 mousemove 리스너를 추가
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('touchmove', onMouseMove, { passive: false });
+        }, 200);
+    };
 
-        // 새 위치 계산 (시작 위치 + 이동 거리)
+    const onMouseMove = (e) => {
+        // 드래그가 준비되지 않았거나, 마우스 버튼이 눌리지 않은 상태면 무시
+        if (!isPrimedForDrag) return;
+
+        if (!isMoving) {
+            isMoving = true; // 실제 이동이 시작됨
+        }
+
+        const eventCoord = e.touches ? e.touches[0] : e;
+        const dx = startX - eventCoord.clientX;
+        const dy = startY - eventCoord.clientY;
+
         let right = startRight + dx;
         let bottom = startBottom + dy;
 
-        // 경계 확인
-        right = Math.max(0, right);
-        bottom = Math.max(0, bottom);
+        const rect = element.getBoundingClientRect();
+        right = Math.max(0, Math.min(right, window.innerWidth - rect.width));
+        bottom = Math.max(0, Math.min(bottom, window.innerHeight - rect.height));
 
-        // 요소 이동
         element.style.right = right + "px";
         element.style.bottom = bottom + "px";
 
         if (onPositionChange) {
             onPositionChange({ right, bottom });
         }
-    });
+        
+        if (e.type === 'touchmove') e.preventDefault();
+    };
 
-    document.addEventListener('mouseup', function() {
+    const onMouseUp = () => {
+        // 마우스를 떼면 무조건 타이머를 취소
         clearTimeout(dragTimeout);
 
-        if (!isDragging) return;
-        isDragging = false;
+        if (isMoving) {
+            const position = {
+                right: parseInt(element.style.right, 10) || 0,
+                bottom: parseInt(element.style.bottom, 10) || 0
+            };
+            localStorage.setItem(positionKey, JSON.stringify(position));
+        }
+        
+        // click 이벤트가 처리된 후 isMoving 상태를 초기화
+        setTimeout(() => {
+            isMoving = false;
+        }, 0);
 
-        // 위치 정보를 로컬 스토리지에 저장
-        const position = {
-            right: parseInt(element.style.right) || 0,
-            bottom: parseInt(element.style.bottom) || 0
-        };
-        localStorage.setItem(positionKey, JSON.stringify(position));
-    });
+        // 모든 이벤트 리스너 정리
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('touchmove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('touchend', onMouseUp);
+    };
 
-    // 터치 이벤트
-    dragHandle.addEventListener('touchstart', function(e) {
-        if (isDragging) return;
-
-        dragTimeout = setTimeout(function() {
-            isDragging = true;
-
-            const touch = e.touches[0];
-            // 시작 위치 저장 (터치 위치와 요소의 현재 right/bottom 값)
-            startX = touch.clientX;
-            startY = touch.clientY;
-            startRight = parseInt(element.style.right) || 0;
-            startBottom = parseInt(element.style.bottom) || 0;
-
+    const onClickCapture = (e) => {
+        if (isMoving) {
+            e.stopPropagation();
             e.preventDefault();
-        }, 500);
-    });
-
-    document.addEventListener('touchmove', function(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        const touch = e.touches[0];
-
-        // 터치 이동 거리 계산
-        const dx = startX - touch.clientX;
-        const dy = startY - touch.clientY;
-
-        // 새 위치 계산 (시작 위치 + 이동 거리)
-        let right = startRight + dx;
-        let bottom = startBottom + dy;
-
-        // 경계 확인
-        right = Math.max(0, right);
-        bottom = Math.max(0, bottom);
-
-        // 요소 이동
-        element.style.right = right + "px";
-        element.style.bottom = bottom + "px";
-
-        if (onPositionChange) {
-            onPositionChange({ right, bottom });
         }
-    });
+    };
 
-    document.addEventListener('touchend', function() {
-        clearTimeout(dragTimeout);
+    dragHandle.addEventListener('mousedown', onMouseDown);
+    dragHandle.addEventListener('touchstart', onMouseDown, { passive: true });
+    dragHandle.addEventListener('click', onClickCapture, true);
 
-        if (!isDragging) return;
-        isDragging = false;
-
-        // 위치 정보를 로컬 스토리지에 저장
-        const position = {
-            right: parseInt(element.style.right) || 0,
-            bottom: parseInt(element.style.bottom) || 0
-        };
-        localStorage.setItem(positionKey, JSON.stringify(position));
-    });
-
-    // 요소를 특정 위치로 이동
     return {
         moveTo: function(position) {
             if (position.right !== undefined) element.style.right = position.right + 'px';
@@ -287,7 +262,6 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
         }
     };
 },
-
 
 
         /**
@@ -572,7 +546,8 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
         }
     };
         // ======================== NEW: 프리셋 관리 UI 모듈 (배열 순서 변경 로직 수정) ========================
-		// [교체할 대상: const PresetManagerUI = { ... };]
+
+// [교체할 대상: const PresetManagerUI = { ... };]
     const PresetManagerUI = {
         createManager: function(config) {
             let presets = config.storageGetter();
@@ -644,13 +619,14 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
                 const renderField = (field, container) => {
                     if (field.showIf && !field.showIf(tempItem)) return;
 
-                    const handleInputChange = (value, newViewState = {}) => {
+                    // [수정] 이벤트 핸들러 로직 개선
+                    const handleDataChange = (value) => {
                         setNestedValue(tempItem, field.key, value);
-                        // showIf 조건이 있는 필드가 변경되었을 때만 폼을 다시 그림
-                        const needsRedraw = config.layout.flat().some(f => f.showIf && f.key === field.key);
-                        if (needsRedraw || Object.keys(newViewState).length > 0) {
-                            redrawForm({ ...viewState, ...newViewState });
-                        }
+                    };
+
+                    const handleUiUpdate = (value, newViewState = {}) => {
+                        setNestedValue(tempItem, field.key, value);
+                        redrawForm({ ...viewState, ...newViewState });
                     };
 
                     const fieldWrapper = Utils.createElement('div', { className: 'form-field-wrapper' });
@@ -660,7 +636,7 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
                     switch (field.type) {
                         case 'checkbox':
                             const checkLabel = Utils.createElement('label', { className: 'form-checkbox-label' });
-                            const checkbox = Utils.createElement('input', { className: 'form-checkbox', type: 'checkbox', onchange: e => handleInputChange(e.target.checked) });
+                            const checkbox = Utils.createElement('input', { className: 'form-checkbox', type: 'checkbox', onchange: e => handleUiUpdate(e.target.checked) });
                             checkbox.checked = getNestedValue(tempItem, field.key) || false;
                             checkLabel.append(checkbox, field.label || '');
                             fieldWrapper.appendChild(checkLabel);
@@ -670,9 +646,6 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
                         case 'select':
                         case 'sizeSelector':
                         case 'category':
-                        case 'text':
-                        case 'number':
-                        case 'textarea':
                             fieldWrapper.classList.add('inline-flex');
                             const label = Utils.createElement('span', { className: 'form-field-label' }, labelText);
                             const inputArea = Utils.createElement('div', { className: 'form-field-input-area' });
@@ -683,13 +656,13 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
                                 if (typeof selectedValue === 'string') { const name = field.sourceGetter().find(p => p.id === selectedValue)?.name || '잘못된 ID'; buttonText = [Utils.createElement('b', {}, name)]; }
                                 else if (typeof selectedValue === 'object' && selectedValue?.type === 'user_input') { buttonText = ['사용자 입력: ', Utils.createElement('b', {}, selectedValue.caption || '(설명 없음)')]; }
                                 else { buttonText = [Utils.createElement('b', {}, '선택...')]; }
-                                input = Utils.createElement('button', { className: 'form-button', style: { width: '100%', textAlign: 'left' }, onclick: () => _createAndShowModal(field.label, field, e => handleInputChange(e)) }, buttonText);
+                                input = Utils.createElement('button', { className: 'form-button', style: { width: '100%', textAlign: 'left' }, onclick: () => _createAndShowModal(field.label, field, handleUiUpdate) }, buttonText);
                             } else if (field.type === 'select') {
-                                input = Utils.createElement('select', { className: 'form-select', onchange: (e) => handleInputChange(e.target.value) });
+                                input = Utils.createElement('select', { className: 'form-select', onchange: (e) => handleUiUpdate(e.target.value) });
                                 field.options.forEach(opt => input.append(Utils.createElement('option', { value: opt.value, textContent: opt.label })));
                                 input.value = getNestedValue(tempItem, field.key);
                             } else if (field.type === 'sizeSelector') {
-                                input = Utils.createElement('select', { className: 'form-select', onchange: (e) => { const [width, height] = e.target.value.split('x').map(Number); setNestedValue(tempItem, field.keys.width, width); setNestedValue(tempItem, field.keys.height, height); }});
+                                input = Utils.createElement('select', { className: 'form-select', onchange: (e) => { const [width, height] = e.target.value.split('x').map(Number); setNestedValue(tempItem, field.keys.width, width); setNestedValue(tempItem, field.keys.height, height); redrawForm(viewState); }});
                                 field.options.forEach(opt => input.append(Utils.createElement('option', { value: opt.value, textContent: opt.label })));
                                 const currentWidth = getNestedValue(tempItem, field.keys.width);
                                 const currentHeight = getNestedValue(tempItem, field.keys.height);
@@ -697,26 +670,37 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
                                 if (input.selectedIndex === -1 && field.options.length > 0) { input.value = field.options[0].value; }
                             } else if (field.type === 'category') {
                                 const allCategories = [...new Set(config.storageGetter().map(p => p.category).filter(Boolean))];
-                                const selectCat = Utils.createElement('select', { className: 'form-select', onchange: (e) => { const isNew = e.target.value === '__new__'; const value = isNew ? '' : (e.target.value === '__none__' ? null : e.target.value); handleInputChange(value, { isCreatingNewCategory: isNew }); }});
+                                const selectCat = Utils.createElement('select', { className: 'form-select', onchange: (e) => { const isNew = e.target.value === '__new__'; const value = isNew ? '' : (e.target.value === '__none__' ? null : e.target.value); handleUiUpdate(value, { isCreatingNewCategory: isNew }); }});
                                 selectCat.append(Utils.createElement('option',{value:'__none__',textContent:'미분류'}), ...allCategories.sort().map(c=>Utils.createElement('option',{value:c,textContent:c})), Utils.createElement('option',{value:'__new__',textContent:'새 분류 생성...'}));
                                 if (viewState.isCreatingNewCategory) { selectCat.value = '__new__'; } else { selectCat.value = getNestedValue(tempItem, field.key) || '__none__'; }
-                                const newCatInput = Utils.createElement('input', { className: 'form-input', type: 'text', placeholder: '새 분류 이름 입력', style: { display: viewState.isCreatingNewCategory ? 'block' : 'none', marginTop: '5px' }, onchange: (e) => setNestedValue(tempItem, field.key, e.target.value.trim() || null) });
+                                const newCatInput = Utils.createElement('input', { className: 'form-input', type: 'text', placeholder: '새 분류 이름 입력', style: { display: viewState.isCreatingNewCategory ? 'block' : 'none', marginTop: '5px' }, onchange: (e) => handleDataChange(e.target.value.trim() || null) });
                                 input = [selectCat, newCatInput];
-                            } else if (field.type === 'textarea') {
-                                input = Utils.createElement('textarea', { className: 'form-textarea', placeholder: field.placeholder || '', onchange: (e) => setNestedValue(tempItem, field.key, e.target.value) }, getNestedValue(tempItem, field.key) || '');
-                            } else if (field.type === 'number') {
-                                input = Utils.createElement('input', { className: 'form-input', type: 'number', value: getNestedValue(tempItem, field.key) || '', placeholder: field.placeholder || '', onchange: (e) => setNestedValue(tempItem, field.key, parseFloat(e.target.value) || 0) });
-                            } else { // text
-                                input = Utils.createElement('input', { className: 'form-input', type: 'text', value: getNestedValue(tempItem, field.key) || '', placeholder: field.placeholder || '', onchange: (e) => setNestedValue(tempItem, field.key, e.target.value) });
                             }
-
+                            
                             if (Array.isArray(input)) { input.forEach(el => inputArea.appendChild(el)); }
                             else { inputArea.appendChild(input); }
                             fieldWrapper.append(label, inputArea);
                             break;
+                        
+                        case 'text':
+                        case 'number':
+                        case 'textarea':
+                            fieldWrapper.classList.add('inline-flex');
+                            const textLabel = Utils.createElement('span', { className: 'form-field-label' }, labelText);
+                            const textInputArea = Utils.createElement('div', { className: 'form-field-input-area' });
+                            if (field.type === 'textarea') {
+                                input = Utils.createElement('textarea', { className: 'form-textarea', placeholder: field.placeholder || '', onchange: (e) => handleDataChange(e.target.value) }, getNestedValue(tempItem, field.key) || '');
+                            } else if (field.type === 'number') {
+                                input = Utils.createElement('input', { className: 'form-input', type: 'number', value: getNestedValue(tempItem, field.key) || '', placeholder: field.placeholder || '', onchange: (e) => handleDataChange(parseFloat(e.target.value) || 0) });
+                            } else { // text
+                                input = Utils.createElement('input', { className: 'form-input', type: 'text', value: getNestedValue(tempItem, field.key) || '', placeholder: field.placeholder || '', onchange: (e) => handleDataChange(e.target.value) });
+                            }
+                            textInputArea.appendChild(input);
+                            fieldWrapper.append(textLabel, textInputArea);
+                            break;
 
                         default:
-                            const defaultInput = Utils.createElement('input', { className: 'form-input', type: 'text', value: getNestedValue(tempItem, field.key) || '', placeholder: field.label, onchange: (e) => setNestedValue(tempItem, field.key, e.target.value) });
+                            const defaultInput = Utils.createElement('input', { className: 'form-input', type: 'text', value: getNestedValue(tempItem, field.key) || '', placeholder: field.label, onchange: (e) => handleDataChange(e.target.value) });
                             fieldWrapper.appendChild(defaultInput);
                             break;
                     }
@@ -830,10 +814,10 @@ makeDraggable: function(element, handle = null, onPositionChange = null, storage
             return section;
         }
     };
+
     // ======================== 4. UI 관리 모듈 ========================
 
     const UI = {
-        // CSS 스타일 정의// [교체할 대상: UI.styles 변수]
         styles: `
 :root {
     --main-color: ${Storage.get('tMainColor', CONFIG.defaultMainColor)};
@@ -1927,16 +1911,14 @@ h1, h2, h3 { font-family: inherit; }
         }
     };
         // ======================== QR 실행기 모듈 (재구성) ========================
+// [교체할 대상: const QRExecutor = { ... };]
     const QRExecutor = {
         /**
          * QR을 실행하는 메인 함수
          * @param {string} qrId - 실행할 QR의 ID
          * @param {HTMLElement | null} buttonElement - 로딩 애니메이션을 적용할 요소
          * @param {Object} [options={}] - 추가 옵션 객체
-         * @param {string} [options.directUserInput=null] - 전용 UI를 통해 직접 전달된 사용자 입력
-         * @param {string} [options.previousResponse=null] - 다중 QR용 이전 응답
          */
- // [교체할 대상: QRExecutor.execute 함수]
         async execute(qrId, buttonElement, options = {}) {
             Utils.toggleLoading(true, buttonElement);
 
@@ -1947,75 +1929,56 @@ h1, h2, h3 { font-family: inherit; }
                 const aiPreset = Storage.getAiPresetById(qr.aiPresetId);
                 if (!aiPreset) throw new Error(`QR '${qr.name}'에 연결된 ID '${qr.aiPresetId}'의 AI 프리셋을 찾을 수 없습니다.`);
 
-                // 1. 사용자 입력 수집 (옵션 전달)
                 const userInputs = await this._collectUserInputs(qr, options);
-                if (userInputs === null) { // 사용자가 입력을 취소한 경우
+                if (userInputs === null) {
                     Utils.toggleLoading(false, buttonElement);
                     return;
                 }
+                
+                // options 객체에서 필요한 값을 직접 전달합니다.
+                const fullPrompt = this._assemblePrompt(qr, userInputs, options.previousResponse, options.insertSlot, aiPreset.type);
 
-                // 2. 프롬프트 조합
-                const fullPrompt = this._assemblePrompt(qr, userInputs, options.previousResponse, aiPreset.type);
-
-                // 3. API 핸들러 호출
                 const apiResponse = await ApiHandler.request(aiPreset, fullPrompt);
 
-                // 4. 후처리
                 await this._handlePostProcess(qr, apiResponse, buttonElement);
 
             } catch (error) {
                 console.error(`QR 실행 오류 (ID: ${qrId}):`, error);
                 alert(`QR 실행 중 오류 발생: ${error.message}`);
-            } finally {
-                // 다중 QR이 아닌 경우에만 로딩 상태를 여기서 해제
-                const finalQr = Storage.getQRById(qrId);
-                if (finalQr && finalQr.postProcess.action !== 'multi_qr') {
-                    Utils.toggleLoading(false, buttonElement);
-                }
+                Utils.toggleLoading(false, buttonElement);
             }
         },
 
-        /**
-         * 사용자 입력을 수집
-         * @private
-         */
-         
         async _collectUserInputs(qr, options = {}) {
             const inputs = {};
             const slotOrder = ['prefix', 'afterPrefix', 'beforeBody', 'afterBody', 'beforeSuffix', 'suffix', 'afterSuffix'];
-            
+
             for (const slotName of slotOrder) {
                 const slotValue = qr.slots[slotName];
                 if (typeof slotValue === 'object' && slotValue?.type === 'user_input') {
                     let userInput;
-                    // 옵션으로 직접 입력값이 들어오고, 해당 슬롯이 맞는지 확인
                     if (options.directUserInput && options.userInputSlot === slotName) {
                         userInput = options.directUserInput;
-                        options.directUserInput = null; // 한번 사용했으므로 비움
                     } else {
-                        // 그 외의 경우엔 프롬프트로 입력 받음
                         userInput = prompt(slotValue.caption);
                     }
-
-                    if (userInput === null) return null; // 사용자가 취소
+                    if (userInput === null) return null;
                     inputs[slotName] = userInput;
                 }
             }
             return inputs;
         },
-        /**
-         * 프롬프트를 조합 (aiType에 따라 구분자 변경)
-         * @private
-         */
-        _assemblePrompt(qr, userInputs, previousResponse, aiType) {
+
+        // [수정] 네 번째 인자로 insertSlot을 명확하게 받도록 변경
+        _assemblePrompt(qr, userInputs, previousResponse, insertSlot, aiType) {
             const promptParts = [];
             const slotOrder = ['prefix', 'afterPrefix', 'beforeBody', 'afterBody', 'beforeSuffix', 'suffix', 'afterSuffix'];
             
             const bodyText = (qr.extractLength > 0) ? this._extractBodyText(qr.extractLength) : '';
 
             for (const slotName of slotOrder) {
-                // 이전 QR 응답 삽입
-                if (qr.postProcess.insertSlot === slotName && previousResponse) {
+                // 이전 QR 응답을 지정된 슬롯에 삽입
+                if (previousResponse && slotName === insertSlot) {
                     promptParts.push(previousResponse);
                 }
                 
@@ -2024,12 +1987,11 @@ h1, h2, h3 { font-family: inherit; }
                     if (typeof slotValue === 'string') { // 프롬프트 ID
                         const promptPreset = Storage.getPromptById(slotValue);
                         if(promptPreset) promptParts.push(promptPreset.content);
-                    } else if (slotValue.type === 'user_input') { // 사용자 입력
+                    } else if (slotValue.type === 'user_input' && userInputs[slotName]) { // 사용자 입력
                         promptParts.push(userInputs[slotName]);
                     }
                 }
 
-                // 본문은 afterBody 슬롯 처리 직후 삽입
                 if (slotName === 'afterBody') {
                     if (bodyText) promptParts.push(bodyText);
                 }
@@ -2037,20 +1999,13 @@ h1, h2, h3 { font-family: inherit; }
             
             const filteredParts = promptParts.filter(p => p && (typeof p === 'string' && p.trim() !== ''));
 
-            // AI 유형에 따라 조합 방식 변경
             if (aiType === 'novelai') {
-                // NovelAI는 쉼표로 구분
                 return filteredParts.join(', ');
             } else {
-                // Gemini 등 다른 AI는 줄바꿈으로 구분
                 return filteredParts.join('\n\n');
             }
         },
         
-        /**
-         * 본문 텍스트 추출
-         * @private
-         */
         _extractBodyText(length) {
             const proseMirrorDiv = document.querySelector('.ProseMirror');
             if (!proseMirrorDiv) return '';
@@ -2063,10 +2018,7 @@ h1, h2, h3 { font-family: inherit; }
             return pText.slice(-length);
         },
 
-        /**
-         * API 응답 후처리
-         * @private
-         */
+        // [수정] handlePostProcess 로직 수정
         async _handlePostProcess(qr, response, buttonElement) {
             let isLoadingFinished = true;
 
@@ -2080,11 +2032,15 @@ h1, h2, h3 { font-family: inherit; }
                     const proseMirror = document.querySelector('.ProseMirror');
                     const lastParagraph = proseMirror?.querySelector('p:last-child');
                     if (lastParagraph) {
-                        const span = document.createElement('span');
-                        span.className = 'userText';
-                        span.textContent = ' ' + response;
-                        lastParagraph.appendChild(span);
-                        window.getSelection().collapse(lastParagraph, lastParagraph.childNodes.length);
+                        const textNode = document.createTextNode(' ' + response);
+                        lastParagraph.appendChild(textNode);
+                        
+                        const range = document.createRange();
+                        const sel = window.getSelection();
+                        range.setStart(textNode, textNode.length);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
                     }
                     break;
 
@@ -2099,9 +2055,12 @@ h1, h2, h3 { font-family: inherit; }
                 case 'multi_qr':
                     if (qr.postProcess.nextQrId) {
                         isLoadingFinished = false;
-                        await this.execute(qr.postProcess.nextQrId, buttonElement, {
-                            previousResponse: response
-                        });
+                        // 다음 QR을 실행하기 전에, 현재 QR의 insertSlot 설정을 options에 담아 전달
+                        const nextOptions = {
+                            previousResponse: response,
+                            insertSlot: qr.postProcess.insertSlot // 현재(1차) QR의 설정을 다음으로 전달
+                        };
+                        await this.execute(qr.postProcess.nextQrId, buttonElement, nextOptions);
                     }
                     break;
                 
@@ -2115,6 +2074,7 @@ h1, h2, h3 { font-family: inherit; }
             }
         }
     };
+
     
     // ======================== NEW: API 핸들러 모듈 ========================
     const ApiHandler = {
