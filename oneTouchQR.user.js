@@ -593,7 +593,7 @@ const Storage = {
                         negative_prompt: 'lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]',
                         width: 1024,
                         height: 1024,
-                        sampler: 'k_euler',
+                        sampler: 'k_euler_ancestral',
                         scheduler: 'karras',
                         steps: 28,
                         scale: 5
