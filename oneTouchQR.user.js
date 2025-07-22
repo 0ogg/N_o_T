@@ -594,7 +594,7 @@ const Storage = {
                         width: 1024,
                         height: 1024,
                         sampler: 'k_euler',
-                        scheduler: 'native',
+                        scheduler: 'karras',
                         steps: 28,
                         scale: 5
                     }
@@ -2450,7 +2450,7 @@ createGeneralSettingsSection: function() {
                 [{ key: 'parameters.nai.scale', label: '스케일', type: 'number', showIf: i => i.type === 'novelai' }],
                 [{ key: 'parameters.nai.steps', label: '스텝', type: 'number', showIf: i => i.type === 'novelai' }],
                 [{ key: 'parameters.nai.sampler', label: '샘플러', type: 'select', showIf: i => i.type === 'novelai', options: [ { value: 'k_euler_ancestral', label: 'k_euler_ancestral' }, { value: 'k_euler', label: 'k_euler' }, { value: 'k_dpmpp_2m', label: 'k_dpmpp_2m' }, { value: 'k_dpmpp_sde', label: 'k_dpmpp_sde' }, { value: 'k_dpmpp_2s_ancestral', label: 'k_dpmpp_2s_ancestral' }, { value: 'k_dpm_fast', label: 'k_dpm_fast' }, { value: 'ddim', label: 'ddim' } ] }],
-                [{ key: 'parameters.nai.scheduler', label: '스케줄러', type: 'select', showIf: i => i.type === 'novelai', options: [ { value: 'karras', label: 'karras' }, { value: 'native', label: 'native' }, { value: 'exponential', label: 'exponential' }, { value: 'polyexponential', label: 'polyexponential' } ] }],
+                [{ key: 'parameters.nai.scheduler', label: '스케줄러', type: 'select', showIf: i => i.type === 'novelai', options: [ { value: 'karras', label: 'karras' }, { value: 'exponential', label: 'exponential' }, { value: 'polyexponential', label: 'polyexponential' } ] }],
                 [{ key: 'category', label: '분류', type: 'category', storageGetter: Storage.getAiPresets.bind(Storage) }]
             ]
         });
