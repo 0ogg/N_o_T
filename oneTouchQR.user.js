@@ -3109,7 +3109,7 @@ const QRExecutor = {
                 scrollContainer.scrollTop = 0; // 스크롤을 맨 위로 이동하여 이전 내용 로드 트리거
                 
                 // NAI가 콘텐츠를 로드할 시간을 줍니다.
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
                 
                 attempts++;
             }
