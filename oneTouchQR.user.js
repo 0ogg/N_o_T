@@ -714,8 +714,7 @@ toggleLoading: function(isLoading, buttonElement, aiType = null) {
                 category: null
             }, ];
         },
-
-        getDefaultAiPresetsData: function() {
+getDefaultAiPresetsData: function() {
             return [{
                     id: 'ai-default',
                     name: 'DEFAULT AI (AI 미입력된 QR 처리용)',
@@ -750,6 +749,21 @@ toggleLoading: function(isLoading, buttonElement, aiType = null) {
                         }
                     }
                 },
+                // [수정] 아래 객체를 Sample에서 Default로 이동시켰습니다.
+                {
+                    id: 'ai-default-novelai-text',
+                    name: 'DEFAULT NovelAI Text (GLM-4.6)',
+                    type: 'textcompletion',
+                    apiKey: '',
+                    endpoint: 'https://text.novelai.net/oa/v1',
+                    category: 'DEFAULT',
+                    parameters: {
+                        model: 'glm-4-6',
+                        temperature: 1,
+                        topP: 0.95,
+                        topK: 0 // Text Completion 에서는 사용되지 않지만, 구조 일관성을 위해 유지
+                    }
+                },
             ];
         },
 
@@ -767,20 +781,7 @@ toggleLoading: function(isLoading, buttonElement, aiType = null) {
                         topK: null
                     }
                 },
-                {
-                    id: 'ai-default-novelai-text',
-                    name: 'DEFAULT NovelAI Text (GLM-4.6)',
-                    type: 'textcompletion',
-                    apiKey: '',
-                    endpoint: 'https://text.novelai.net/oa/v1',
-                    category: 'DEFAULT',
-                    parameters: {
-                        model: 'glm-4-6',
-                        temperature: 1,
-                        topP: 0.95,
-                        topK: 0 // Text Completion 에서는 사용되지 않지만, 구조 일관성을 위해 유지
-                    }
-                },
+                // [수정] 이 위치에 있던 'DEFAULT NovelAI Text (GLM-4.6)' 프리셋이 위 getDefaultAiPresetsData 함수로 이동했습니다.
                 {
                     name: '딥시크 (Chat)',
                     type: 'openai',
