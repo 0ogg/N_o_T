@@ -5980,7 +5980,7 @@ h1, h2, h3 {
         },
 
         async _assemblePrompt(qr, userInputs, previousResponse, insertSlot, aiType) {
-            if (qr.extractLength >= 8000) {
+            if (qr.extractLength >= 10000) {
                 await this._loadAllContent();
             }
 
