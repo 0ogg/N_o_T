@@ -1047,7 +1047,7 @@
                         } else {
                             transformedSlots[slotName] = null;
                         }
-                    } else if (typeof slotValue === 'object' && slotValue ? .type === 'user_input') {
+                    } else if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
                         transformedSlots[slotName] = {
                             ...slotValue
                         };
@@ -1117,11 +1117,11 @@
                         if (!slotValue) continue;
 
                         if (slotValue.type === 'prompt') {
-                            const trimmedName = slotValue.name ? .trim();
-                            const trimmedContent = slotValue.content ? .trim();
+                            const trimmedName = slotValue.name ?.trim();
+                            const trimmedContent = slotValue.content ?.trim();
                             const existingPrompt = allPrompts.find(p =>
-                                p.name ? .trim() === trimmedName &&
-                                p.content ? .trim() === trimmedContent
+                                p.name ?.trim() === trimmedName &&
+                                p.content ?.trim() === trimmedContent
                             );
 
                             if (existingPrompt) {
@@ -1345,7 +1345,7 @@
                 responseToLog = JSON.stringify(response);
             }
 
-            const title = document.querySelector('title') ? .textContent.replace(/ - NovelAI$/, '').trim() || 'Untitled';
+            const title = document.querySelector('title') ?.textContent.replace(/ - NovelAI$/, '').trim() || 'Untitled';
 
             const d = new Date();
             const pad = (num) => num.toString().padStart(2, '0');
@@ -2463,7 +2463,7 @@
                                         Utils.createElement('input', {
                                             className: 'form-input',
                                             type: 'number',
-                                            value: target.contextConfig ? .budgetPriority || 0,
+                                            value: target.contextConfig ?.budgetPriority || 0,
                                             onchange: e => onUpdate('contextConfig.budgetPriority', parseInt(e.target.value, 10))
                                         }),
                                         Utils.createElement('label', {
@@ -2516,7 +2516,7 @@
                                             redrawForm(viewState);
                                         }
                                     });
-                                    if (viewState.selectedItem ? .id === id) {
+                                    if (viewState.selectedItem ?.id === id) {
                                         itemEl.style.backgroundColor = 'rgba(255,255,255,0.15)';
                                     }
                                     return itemEl;
@@ -2565,7 +2565,7 @@
                                         contextConfig: {
                                             budgetPriority: 400
                                         },
-                                        category: viewState.selectedItem ? .type === 'category' ? viewState.selectedItem.id : null
+                                        category: viewState.selectedItem ?.type === 'category' ? viewState.selectedItem.id : null
                                     };
                                     tempItem.data.entries.push(newEntry);
                                     redrawForm(viewState);
@@ -2603,9 +2603,9 @@
                                 const found = source.find(p => p.id === selectedValue);
                                 const name = found ? found.name : '잘못된 ID';
                                 buttonText = [Utils.createElement('b', {}, `선택됨: ${name}`)];
-                            } else if (selectedValue ? .type === 'user_input') {
+                            } else if (selectedValue ?.type === 'user_input') {
                                 buttonText = ['사용자 입력: ', Utils.createElement('b', {}, selectedValue.caption || '(설명 없음)')];
-                            } else if (selectedValue ? .type === 'lorebook') {
+                            } else if (selectedValue ?.type === 'lorebook') {
                                 buttonText = [Utils.createElement('b', {}, `로어북: ${selectedValue.ids.length}개 선택됨`)];
                             } else {
                                 buttonText = [Utils.createElement('b', {}, '선택...')];
@@ -3203,7 +3203,7 @@ h1, h2, h3 { font-family: inherit; }
 
                 let rawIconInput = overrideIcon;
                 if (!rawIconInput) {
-                    if (item.remote ? .icon) rawIconInput = item.remote.icon;
+                    if (item.remote ?.icon) rawIconInput = item.remote.icon;
                     else if (item.icon) rawIconInput = item.icon;
                 }
 
@@ -3226,7 +3226,7 @@ h1, h2, h3 { font-family: inherit; }
                     button.appendChild(iconElement);
                 } else {
                     const emojiRegex = /^(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26ff]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u2ce9|\u2934|\u2935|[\u2190-\u21ff])/;
-                    const match = item.name ? .match(emojiRegex);
+                    const match = item.name ?.match(emojiRegex);
                     if (match) {
                         button.textContent = match[0];
                         button.style.fontSize = 'calc(var(--remote-button-size) * 0.5)';
@@ -3377,7 +3377,7 @@ h1, h2, h3 { font-family: inherit; }
 
                         for (const slotName of slotOrder) {
                             const slotValue = qr.slots[slotName];
-                            if (typeof slotValue === 'object' && slotValue ? .type === 'user_input') {
+                            if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
                                 targetSlot = slotName;
                                 break;
                             }
@@ -5582,7 +5582,7 @@ h1, h2, h3 { font-family: inherit; }
 
             for (const slotName of slotOrder) {
                 const slotValue = qr.slots[slotName];
-                if (typeof slotValue === 'object' && slotValue ? .type === 'user_input') {
+                if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
                     let userInput;
                     if (options.directUserInput && options.userInputSlot === slotName) {
                         userInput = options.directUserInput;
@@ -5656,7 +5656,7 @@ h1, h2, h3 { font-family: inherit; }
 
             if (activeEntries.length === 0) return '';
 
-            activeEntries.sort((a, b) => (b.contextConfig ? .budgetPriority || 0) - (a.contextConfig ? .budgetPriority || 0));
+            activeEntries.sort((a, b) => (b.contextConfig ?.budgetPriority || 0) - (a.contextConfig ?.budgetPriority || 0));
 
             return activeEntries.map(entry => entry.text).join('\n');
         },
@@ -5828,7 +5828,7 @@ h1, h2, h3 { font-family: inherit; }
                 let errorMessage = `Gemini API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ? .message || responseText;
+                    errorMessage += errorJson.error ?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -5837,7 +5837,7 @@ h1, h2, h3 { font-family: inherit; }
 
             try {
                 const data = JSON.parse(responseText);
-                if (data.candidates && data.candidates[0] ? .content.parts[0] ? .text) {
+                if (data.candidates && data.candidates[0] ?.content.parts[0] ?.text) {
                     return data.candidates[0].content.parts[0].text;
                 } else if (data.promptFeedback) {
                     throw new Error("Gemini 요청이 차단되었습니다: " + JSON.stringify(data.promptFeedback));
@@ -5859,7 +5859,7 @@ h1, h2, h3 { font-family: inherit; }
                 endpoint,
                 parameters
             } = aiPreset;
-            const apiUrl = endpoint ? .trim().replace(/\/$/, '') || 'https://api.openai.com/v1/chat/completions';
+            const apiUrl = endpoint ?.trim().replace(/\/$/, '') || 'https://api.openai.com/v1/chat/completions';
 
             const requestBody = {
                 model: parameters.model,
@@ -5887,7 +5887,7 @@ h1, h2, h3 { font-family: inherit; }
                 let errorMessage = `OpenAI API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ? .message || responseText;
+                    errorMessage += errorJson.error ?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -5896,7 +5896,7 @@ h1, h2, h3 { font-family: inherit; }
 
             try {
                 const data = JSON.parse(responseText);
-                if (data.choices && data.choices[0] ? .message ? .content) {
+                if (data.choices && data.choices[0] ?.message ?.content) {
                     return data.choices[0].message.content;
                 } else {
                     throw new Error("OpenAI로부터 유효한 응답을 받지 못했습니다. 받은 내용: " + responseText);
@@ -5916,7 +5916,7 @@ h1, h2, h3 { font-family: inherit; }
                 endpoint,
                 parameters
             } = aiPreset;
-            const apiUrl = endpoint ? .trim().replace(/\/$/, '') || 'https://api.anthropic.com/v1/messages';
+            const apiUrl = endpoint ?.trim().replace(/\/$/, '') || 'https://api.anthropic.com/v1/messages';
 
             const requestBody = {
                 model: parameters.model,
@@ -5947,7 +5947,7 @@ h1, h2, h3 { font-family: inherit; }
                 let errorMessage = `Claude API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ? .message || responseText;
+                    errorMessage += errorJson.error ?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -5958,7 +5958,7 @@ h1, h2, h3 { font-family: inherit; }
                 const data = JSON.parse(responseText);
                 if (Array.isArray(data.content)) {
                     const textPart = data.content.find(part => part.type === 'text');
-                    if (textPart ? .text) return textPart.text;
+                    if (textPart ?.text) return textPart.text;
                 }
                 throw new Error("Claude로부터 유효한 텍스트 응답을 받지 못했습니다. 받은 내용: " + responseText);
             } catch (jsonError) {
@@ -6034,7 +6034,7 @@ h1, h2, h3 { font-family: inherit; }
             const imageBlob = await imageFile.async('blob');
             const imageUrl = URL.createObjectURL(imageBlob);
 
-            const title = document.querySelector('[aria-label="Story Title"]') ? .value || 'story';
+            const title = document.querySelector('[aria-label="Story Title"]') ?.value || 'story';
             const dateTime = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
             const imageName = `${title}_${dateTime}.png`;
 
