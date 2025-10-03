@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 QR
 // @namespace    https://novelai.net/
-// @version      2.2
+// @version      2.3
 // @description  novel ai 보조툴. NAI 본문을 추출하여 커스텀 프롬프트와 함께 API 요청후, 본문/출력창/이미지창에 선택적 출력. Firebase를 이용한 실행 기록 로깅 기능 추가.
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -37,7 +37,7 @@
      * @typedef {Object} AiPreset - AI 프리셋
      * @property {string} id - 고유 ID (e.g., 'ai-1718865900000')
      * @property {string} name - 프리셋 이름
-     * @property {'gemini' | 'novelai' | 'openai' | 'claude'} type - API 유형
+     * @property {'gemini' | 'novelai' | 'openai' | 'claude' | 'textcompletion'} type - API 유형
      * @property {string} apiKey - API 키
      * @property {string} endpoint - API 엔드포인트 URL
      * @property {string | null} category - 분류
@@ -688,6 +688,12 @@
                     content: 'masterpiece, best quality, highres, absurdres, ultra-detailed, intricate details, professional, vivid colors, dynamic light, soft shadow, 4k, very aesthetic, highly finished, hyper detail',
                     category: 'DEFAULT'
                 },
+                {
+                    id: 'default-prompt-nai-prefill',
+                    name: 'DEFAULT NOVEL AI 텍스트 프리필',
+                    content: '/nothink<|assistant|>\n<think></think>',
+                    category: 'DEFAULT'
+                },
             ];
         },
 
@@ -752,6 +758,20 @@
                     }
                 },
                 {
+                    id: 'ai-default-novelai-text',
+                    name: 'DEFAULT NovelAI Text (GLM-4.6)',
+                    type: 'textcompletion',
+                    apiKey: '',
+                    endpoint: 'https://text.novelai.net/oa/v1',
+                    category: 'DEFAULT',
+                    parameters: {
+                        model: 'glm-4-6',
+                        temperature: 1,
+                        topP: 0.95,
+                        topK: 0 // Text Completion 에서는 사용되지 않지만, 구조 일관성을 위해 유지
+                    }
+                },
+                {
                     name: '딥시크 (Chat)',
                     type: 'openai',
                     apiKey: '',
@@ -810,7 +830,7 @@
                 {
                     id: 'default-image-prompt',
                     name: 'DEFAULT 삽화 프롬 생성',
-                    aiPresetId: 'ai-default',
+                    aiPresetId: 'ai-default-novelai-text',
                     category: 'DEFAULT',
                     slots: {
                         prefix: {
@@ -822,7 +842,7 @@
                         afterBody: null,
                         beforeSuffix: null,
                         suffix: 'default-prompt-image-main',
-                        afterSuffix: null
+                        afterSuffix: 'default-prompt-nai-prefill'
                     },
                     extractLength: 6000,
                     postProcess: {
@@ -4156,7 +4176,10 @@ h1, h2, h3 { font-family: inherit; }
                             label: 'Gemini'
                         }, {
                             value: 'openai',
-                            label: 'OpenAI'
+                            label: 'OpenAI (Chat completion)'
+                        }, {
+                            value: 'textcompletion',
+                            label: 'Text Completion (OpenAI-like)'
                         }, {
                             value: 'claude',
                             label: 'Claude'
@@ -5768,6 +5791,8 @@ h1, h2, h3 { font-family: inherit; }
                     return await this.requestClaude(aiPreset, fullPrompt);
                 case 'novelai':
                     return await this.requestNovelAI(aiPreset, fullPrompt);
+                case 'textcompletion':
+                    return await this.requestTextCompletion(aiPreset, fullPrompt);
                 default:
                     throw new Error(`지원되지 않는 AI 프리셋 유형입니다: ${aiPreset.type}`);
             }
@@ -5905,7 +5930,116 @@ h1, h2, h3 { font-family: inherit; }
                 throw new Error(`OpenAI API 응답이 유효한 JSON 형식이 아닙니다. 받은 응답: ${responseText}`);
             }
         },
+	/**
+         * OpenAI Text Completions API 요청 (스트리밍 및 Generic 필터링 지원)
+         * @private
+         */
+        async requestTextCompletion(aiPreset, fullPrompt) {
+            const { apiKey, endpoint, parameters } = aiPreset;
 
+            // --- [수정된 부분] ---
+            // 엔드포인트 URL의 끝에 '/v1'이 있으면 제거하고, '/v1/completions'를 붙여 경로를 보정합니다.
+            // 이렇게 하면 사용자가 'https://host/v1' 또는 'https://host' 중 어떻게 입력하든 올바른 URL이 생성됩니다.
+            const baseUrl = endpoint?.trim().replace(/\/v1\/?$/, '').replace(/\/$/, '');
+            const apiUrl = `${baseUrl}/v1/completions`;
+            // --- [수정 끝] ---
+            
+            const validKeys = [
+                'model', 'prompt', 'temperature', 'top_p', 'max_tokens',
+                'presence_penalty', 'frequency_penalty', 'repetition_penalty',
+                'stop', 'stream', 'logit_bias', 'user', 'n', 'logprobs', 'echo'
+            ];
+
+            const paramMap = {
+                temperature: 'temperature',
+                topP: 'top_p',
+            };
+
+            const requestBody = {
+                model: parameters.model,
+                prompt: fullPrompt,
+                max_tokens: 4096,
+                stream: true
+            };
+
+            Object.keys(parameters).forEach(key => {
+                const mappedKey = paramMap[key] || key;
+                if (validKeys.includes(mappedKey) && parameters[key] !== null && parameters[key] !== undefined) {
+                    requestBody[mappedKey] = parameters[key];
+                }
+            });
+            
+            if (Array.isArray(requestBody.stop)) {
+                requestBody.stop = requestBody.stop.slice(0, 4);
+            }
+            
+            // 디버깅 로그는 유지하여 계속 확인하는 것이 좋습니다.
+            console.log("===== [Text Completion] API 요청 디버그 정보 =====");
+            console.log("요청 URL:", apiUrl);
+            console.log("요청 본문 (Body):", JSON.stringify(requestBody, null, 2));
+            console.log("==================================================");
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            // ... (이하 스트리밍 처리 로직은 동일)
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `Text Completion API 요청 실패 (HTTP ${response.status}): `;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage += errorJson.error?.message || errorText;
+                } catch (e) {
+                    errorMessage += errorText;
+                }
+                throw new Error(errorMessage);
+            }
+
+            if (!response.body) {
+                throw new Error("API 응답에 스트림 바디가 없습니다.");
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponseText = '';
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            if (data.trim() === '[DONE]') {
+                                break;
+                            }
+                            try {
+                                const json = JSON.parse(data);
+                                if (json.choices && json.choices[0]?.text) {
+                                    fullResponseText += json.choices[0].text;
+                                }
+                            } catch (e) {
+                                console.error('스트림 데이터 파싱 오류:', e, '데이터:', data);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                throw new Error(`스트림 읽기 중 오류 발생: ${error.message}`);
+            }
+
+            return fullResponseText.trim();
+        },
         /**
          * Claude (Anthropic) Messages API 요청
          * @private
