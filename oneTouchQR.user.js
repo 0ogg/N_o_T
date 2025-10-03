@@ -136,6 +136,7 @@
             // [추가] 새로운 리모컨 설정
             expansionDirection: 'forward', // 'forward' 또는 'backward'
             folderWrapCount: 5,
+            transparency: 100,
         },
     };
 
@@ -225,12 +226,21 @@
             return success;
         },
 
-        toggleLoading: function(isLoading, buttonElement) {
+toggleLoading: function(isLoading, buttonElement, aiType = null) {
             if (buttonElement) {
                 if (isLoading) {
-                    buttonElement.classList.add('loading');
+                    // 일단 모든 로딩 클래스를 제거하여 상태를 초기화
+                    buttonElement.classList.remove('loading', 'loading-text');
+
+                    // aiType에 따라 적절한 로딩 클래스 추가
+                    if (aiType === 'textcompletion') {
+                        buttonElement.classList.add('loading-text');
+                    } else {
+                        buttonElement.classList.add('loading');
+                    }
                 } else {
-                    buttonElement.classList.remove('loading');
+                    // 로딩이 끝나면 모든 관련 클래스 제거
+                    buttonElement.classList.remove('loading', 'loading-text');
                 }
             }
         },
@@ -2977,6 +2987,7 @@
         styles: `
 :root {
     --main-color: ${Storage.get('tMainColor', CONFIG.defaultMainColor)};
+    --remote-main-color: ${Storage.get('tMainColor', CONFIG.defaultMainColor)};
     --highlight-color: ${Storage.get('colorCode', CONFIG.defaultHighlightColor)};
     --italic-active: normal;
     --bold-active: normal;
@@ -2988,19 +2999,89 @@
     --image-panel-width: ${Storage.get('imagePanelDimensions', { width: 1200 }).width}px;
     --image-panel-height: ${Storage.get('imagePanelDimensions', { height: 800 }).height}px;
 }
-.loading { animation: rotate-shadow 2s linear infinite; }
+/* [수정] 애니메이션 키프레임은 그대로 유지 */
 @keyframes rotate-shadow {
     0% { box-shadow: 0 0 2px rgba(var(--highlight-rgb), 0.9); }
     50% { box-shadow: 0 0 10px rgba(var(--highlight-rgb), 0.9); }
     100% { box-shadow: 0 0 2px rgba(var(--highlight-rgb), 0.9); }
 }
-#remote-control { position: fixed; z-index: 11000; display: flex; gap: var(--remote-button-gap); }
-.remote-button { width: var(--remote-button-size); height: var(--remote-button-size); border-radius: var(--remote-button-radius); background-size: cover; background-position: center; cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: var(--main-color); font-weight: bold; font-size: calc(var(--remote-button-size) * 0.4); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); flex-shrink: 0; white-space: nowrap; user-select: none; overflow: visible; position: relative; }
-.folder-count-badge { position: absolute; top: 1px; right: 1px; background-color: var(--highlight-color); color: white; border-radius: 50%; font-size: calc(var(--remote-button-size) * 0.28); font-weight: bold; min-width: calc(var(--remote-button-size) * 0.35); height: calc(var(--remote-button-size) * 0.35); display: flex; align-items: center; justify-content: center; line-height: 1; padding: 1px; box-sizing: border-box; box-shadow: 0 0 4px rgba(0,0,0,0.6); pointer-events: none; }
-.remote-group-container { display: flex; gap: var(--remote-button-gap); }
-#remote-control.vertical .remote-group-container { flex-direction: column; }
-#remote-control.horizontal .remote-group-container { flex-direction: row; }
-.folder-container { position: relative; display: flex; align-items: center; }
+@keyframes rotate-shadow-text {
+    0% { box-shadow: 0 0 2px rgba(255, 100, 50, 0.9); }
+    50% { box-shadow: 0 0 10px rgba(255, 100, 50, 0.9); }
+    100% { box-shadow: 0 0 2px rgba(255, 100, 50, 0.9); }
+}
+#remote-control {
+    position: fixed;
+    z-index: 11000;
+    display: flex;
+    gap: var(--remote-button-gap);
+}
+.remote-button {
+    width: var(--remote-button-size);
+    height: var(--remote-button-size);
+    border-radius: var(--remote-button-radius);
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--remote-main-color);
+    font-weight: bold;
+    font-size: calc(var(--remote-button-size) * 0.4);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    white-space: nowrap;
+    user-select: none;
+    overflow: visible;
+    position: relative;
+}
+/* [수정] 선택자 우선순위를 높여 애니메이션이 확실히 적용되도록 수정 */
+.remote-button.loading,
+.remote-button.loading-text {
+    pointer-events: none; /* 로딩 중 클릭 비활성화 */
+}
+.remote-button.loading {
+    animation: rotate-shadow 2s linear infinite;
+}
+.remote-button.loading-text {
+    animation: rotate-shadow-text 2s linear infinite;
+}
+.folder-count-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background-color: var(--highlight-color);
+    color: white;
+    border-radius: 50%;
+    font-size: calc(var(--remote-button-size) * 0.28);
+    font-weight: bold;
+    min-width: calc(var(--remote-button-size) * 0.35);
+    height: calc(var(--remote-button-size) * 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 1px;
+    box-sizing: border-box;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+.remote-group-container {
+    display: flex;
+    gap: var(--remote-button-gap);
+}
+#remote-control.vertical .remote-group-container {
+    flex-direction: column;
+}
+#remote-control.horizontal .remote-group-container {
+    flex-direction: row;
+}
+.folder-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
 .sub-remote-container {
     display: none;
     position: absolute;
@@ -3011,34 +3092,96 @@
     z-index: -1;
     box-sizing: border-box;
 }
-.sub-remote-container.visible { display: flex; }
-.sub-remote-container[data-wrap="true"] { flex-wrap: wrap; }
-.folder-container.expand-horizontal { flex-direction: row; }
-.sub-remote-container.expand-right { left: calc(100% + var(--remote-button-gap)); top: 50%; transform: translateY(-50%); flex-direction: row; }
-.sub-remote-container.expand-left { right: calc(100% + var(--remote-button-gap)); top: 50%; transform: translateY(-50%); flex-direction: row; }
-.folder-container.expand-vertical { flex-direction: column; }
-.sub-remote-container.expand-down { top: calc(100% + var(--remote-button-gap)); left: 50%; transform: translateX(-50%); flex-direction: column; }
-.sub-remote-container.expand-up { bottom: calc(100% + var(--remote-button-gap)); left: 50%; transform: translateX(-50%); flex-direction: column; }
-#output-panel { display: none; flex-direction: column; position: fixed; z-index: 10000; width: 350px; max-width: 95%; background: var(--main-color); height: 100%; bottom: 0px; right: 0px; padding: 10px; }
-#extracted-text { min-height: 85%; overflow: auto; padding: 10px; word-break: break-word; }
-#top-menu { display: flex; gap: 10px; margin-bottom: 5px; }
-.menu-button { padding: 5px 10px; background-color: rgba(255, 255, 255, 0.1); border: none; border-radius: 4px; cursor: pointer; }
-.menu-button:hover { background-color: rgba(255, 255, 255, 0.2); }
-
-#settings-panel, #image-panel {
+.sub-remote-container.visible {
+    display: flex;
+}
+.sub-remote-container[data-wrap="true"] {
+    flex-wrap: wrap;
+}
+.folder-container.expand-horizontal {
+    flex-direction: row;
+}
+.sub-remote-container.expand-right {
+    left: calc(100% + var(--remote-button-gap));
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: row;
+}
+.sub-remote-container.expand-left {
+    right: calc(100% + var(--remote-button-gap));
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: row;
+}
+.folder-container.expand-vertical {
+    flex-direction: column;
+}
+.sub-remote-container.expand-down {
+    top: calc(100% + var(--remote-button-gap));
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: column;
+}
+.sub-remote-container.expand-up {
+    bottom: calc(100% + var(--remote-button-gap));
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: column;
+}
+#output-panel {
+    display: none;
+    flex-direction: column;
+    position: fixed;
+    z-index: 10000;
+    width: 350px;
+    max-width: 95%;
+    background: var(--main-color);
+    height: 100%;
+    bottom: 0px;
+    right: 0px;
+    padding: 10px;
+}
+#extracted-text {
+    min-height: 85%;
+    overflow: auto;
+    padding: 10px;
+    word-break: break-word;
+}
+#top-menu {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+.menu-button {
+    padding: 5px 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.menu-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+#settings-panel,
+#image-panel {
     display: none;
     position: fixed;
     flex-direction: column;
     background-color: var(--main-color);
     padding: 0;
     border-radius: 8px;
-    z-index: 20000;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(30px);
 }
-#settings-panel { width: 90%; max-width: 600px; height: 85vh; }
+#settings-panel {
+    z-index: 20001;
+    width: 90%;
+    max-width: 600px;
+    height: 85vh;
+}
 #image-panel {
+    z-index: 20000;
     width: var(--image-panel-width);
     height: var(--image-panel-height);
     min-width: 100px;
@@ -3055,67 +3198,228 @@
     border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
     height: 30px;
 }
-.settings-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin: 15px 0; padding: 0 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
-.settings-tab { padding: 8px 12px; background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; cursor: pointer; }
-.settings-tab.active { background-color: rgba(255, 255, 255, 0.15); color: var(--highlight-color); font-weight: bold; border-color: var(--highlight-color); }
-.settings-content { flex-grow: 1; overflow: auto; min-height: 0; }
-#settings-panel .settings-content { padding: 0 10px 20px 20px; }
-
-/* [수정] 보조창(image-panel) 내부 구조 스타일 */
-#image-panel-content-wrapper { flex-grow: 1; overflow: auto; min-height: 0; padding: 15px; }
-#image-panel-content-wrapper img.generated-image { max-width: 100%; height: auto; display: block; margin-bottom: 15px; }
-#image-panel-content-wrapper iframe { width: 100%; height: 100%; border: none; }
-.prompt-editor-container { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
-.buttons-container { display: flex; gap: 10px; justify-content: center; }
-
-
-.settings-section { display: none; }
-.settings-section.active { display: block; }
-.settings-section h4 { margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-.form-group { margin-bottom: 15px; }
-.form-label { display: block; margin-bottom: 5px; font-weight: bold; opacity: 0.9; }
-.form-input, .form-textarea, .form-select { width: 100%; padding: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; font-size: 14px; }
-.form-input::placeholder, .form-textarea::placeholder { color: rgba(255, 255, 255, 0.5); }
-.form-textarea { min-height: 120px; resize: vertical; }
-.form-checkbox-label, .form-radio-label { display: flex; align-items: center; gap: 8px; padding: 5px 0; cursor: pointer; }
-.form-checkbox, .form-radio { width: 16px; height: 16px; flex-shrink: 0; }
-.form-button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; background-color: rgba(255, 255, 255, 0.1); }
-.form-button:hover { background-color: rgba(255, 255, 255, 0.2); }
-.form-button.primary { background-color: var(--highlight-color); color: white; }
-.form-button > b { color: var(--highlight-color); font-weight: normal; }
-.list-item { display: flex; align-items: center; gap: 8px; padding: 8px 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.list-item:last-child { border-bottom: none; }
-.list-item-name { flex-grow: 1; cursor: pointer; }
-.list-item-controls { display: flex; gap: 5px; align-items: center; }
-.list-item-controls button { padding: 2px 6px; font-size: 14px; }
-.list-item-controls .form-checkbox { margin: 0 5px; }
-.preset-edit-container { margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.15); border-radius: 4px; }
-.form-button-group { margin-top: 20px; display: flex; gap: 10px; }
-.close-button { position: static; background: none; border: none; font-size: 20px; cursor: pointer; z-index: 10; opacity: 0.7; flex-shrink: 0; padding: 0 5px; height: 100%; }
-.close-button:hover { opacity: 1; }
-
-.draggable-handle {
-  cursor: move;
-  flex-grow: 1;
-  user-select: none;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border-radius: 1px;
-  background-color: currentColor;
-  background-size: 6px 6px;
-  background-position: 0 0, 3px 3px;
-  box-sizing: border-box;
-  opacity: 0.1;
+.settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 15px 0;
+    padding: 0 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 15px;
 }
-
-#translation-input-container { width: 100%; margin-top: 10px; }
-#ko-en-input { margin-bottom: 10px; width: 100%; padding: 5px; border: 1px solid rgba(255, 255, 255, 0.2); background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
-span.highlight-text { font-style: var(--italic-active) !important; font-weight: var(--bold-active) !important; color: var(--text-highlight-color) !important; }
-.nm { margin: 0; }
-h1, h2, h3 { font-family: inherit; }
+.settings-tab {
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+}
+.settings-tab.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--highlight-color);
+    font-weight: bold;
+    border-color: var(--highlight-color);
+}
+.settings-content {
+    flex-grow: 1;
+    overflow: auto;
+    min-height: 0;
+}
+#settings-panel .settings-content {
+    padding: 0 10px 20px 20px;
+}
+#image-panel-content-wrapper {
+    flex-grow: 1;
+    overflow: auto;
+    min-height: 0;
+    padding: 15px;
+}
+#image-panel-content-wrapper img.generated-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 15px;
+}
+#image-panel-content-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+.prompt-editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+.buttons-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.settings-section {
+    display: none;
+}
+.settings-section.active {
+    display: block;
+}
+.settings-section h4 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 5px;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    opacity: 0.9;
+}
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 14px;
+}
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+.form-textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+.form-checkbox-label,
+.form-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    cursor: pointer;
+}
+.form-checkbox,
+.form-radio {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.form-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.form-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+.form-button.primary {
+    background-color: var(--highlight-color);
+    color: white;
+}
+.form-button > b {
+    color: var(--highlight-color);
+    font-weight: normal;
+}
+.list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.list-item:last-child {
+    border-bottom: none;
+}
+.list-item-name {
+    flex-grow: 1;
+    cursor: pointer;
+}
+.list-item-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+.list-item-controls button {
+    padding: 2px 6px;
+    font-size: 14px;
+}
+.list-item-controls .form-checkbox {
+    margin: 0 5px;
+}
+.preset-edit-container {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 4px;
+}
+.form-button-group {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+.close-button {
+    position: static;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0.7;
+    flex-shrink: 0;
+    padding: 0 5px;
+    height: 100%;
+}
+.close-button:hover {
+    opacity: 1;
+}
+.draggable-handle {
+    cursor: move;
+    flex-grow: 1;
+    user-select: none;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 1px;
+    background-color: currentColor;
+    background-size: 6px 6px;
+    background-position: 0 0, 3px 3px;
+    box-sizing: border-box;
+    opacity: 0.1;
+}
+#translation-input-container {
+    width: 100%;
+    margin-top: 10px;
+}
+#ko-en-input {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+span.highlight-text {
+    font-style: var(--italic-active) !important;
+    font-weight: var(--bold-active) !important;
+    color: var(--text-highlight-color) !important;
+}
+.nm {
+    margin: 0;
+}
+h1, h2, h3 {
+    font-family: inherit;
+}
 @media (max-width: 768px) {
-    #settings-panel, #image-panel {
+    #settings-panel,
+    #image-panel {
         left: 50% !important;
         top: 50% !important;
         right: auto !important;
@@ -3139,6 +3443,18 @@ h1, h2, h3 { font-family: inherit; }
             const styleElement = document.createElement('style');
             styleElement.textContent = this.styles;
             document.head.appendChild(styleElement);
+
+            // [추가] 스크립트 로딩 시 저장된 투명도 값을 --remote-main-color 변수에 적용
+            const mainColor = Storage.get('tMainColor', CONFIG.defaultMainColor);
+            const remoteConfig = Storage.get('remoteControl', CONFIG.remoteControl);
+            const transparency = remoteConfig.transparency !== undefined ? remoteConfig.transparency : 100;
+            const colorParts = mainColor.match(/(\d+(\.\d+)?)/g); // 숫자 부분 추출
+            if (colorParts && colorParts.length >= 3) {
+                const [r, g, b] = colorParts;
+                const newAlpha = transparency / 100.0;
+                document.documentElement.style.setProperty('--remote-main-color', `rgba(${r}, ${g}, ${b}, ${newAlpha})`);
+            }
+
             const faLink = document.createElement('link');
             faLink.rel = 'stylesheet';
             faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css';
@@ -4453,6 +4769,38 @@ h1, h2, h3 { font-family: inherit; }
                         self.createRemoteControl();
                     }
                 });
+
+                // [추가] 투명도 슬라이더 UI 생성
+                const transparencyContainer = Utils.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } });
+                const transparencyValueLabel = Utils.createElement('span', { textContent: `${remoteConfig.transparency || 100}%` });
+                const transparencyInput = Utils.createElement('input', {
+                    type: 'range',
+                    min: '0',
+                    max: '100',
+                    step: '1',
+                    value: remoteConfig.transparency || 100,
+                    style: { flexGrow: 1 },
+                    oninput: (e) => {
+                        const value = parseInt(e.target.value);
+                        transparencyValueLabel.textContent = `${value}%`;
+
+                        // 실시간으로 CSS 변수 및 스토리지 업데이트
+                        const config = Storage.get('remoteControl', CONFIG.remoteControl);
+                        config.transparency = value;
+                        Storage.set('remoteControl', config);
+
+                        const mainColor = Storage.get('tMainColor', CONFIG.defaultMainColor);
+                        const colorParts = mainColor.match(/(\d+(\.\d+)?)/g);
+                        if (colorParts && colorParts.length >= 3) {
+                            const [r, g, b] = colorParts;
+                            const newAlpha = value / 100.0;
+                            document.documentElement.style.setProperty('--remote-main-color', `rgba(${r}, ${g}, ${b}, ${newAlpha})`);
+                        }
+                    }
+                });
+                transparencyContainer.append(transparencyInput, transparencyValueLabel);
+
+
                 const wrapInput = Utils.createElement('input', {
                     className: 'form-input',
                     type: 'number',
@@ -4510,6 +4858,7 @@ h1, h2, h3 { font-family: inherit; }
                 section.append(
                     createFormGroup('버튼 크기 (px)', sizeInput),
                     createFormGroup('버튼 간격 (px)', gapInput),
+                    createFormGroup('리모컨 투명도', transparencyContainer), // [추가] 투명도 슬라이더 추가
                     createFormGroup('폴더 내 줄당 버튼 수', wrapInput),
                     createFormGroup('버튼 모양', shapeGroup),
                     createFormGroup('버튼 배열', orientationGroup),
@@ -4699,7 +5048,7 @@ h1, h2, h3 { font-family: inherit; }
             render();
             return section;
         },
-
+        
         createLoggingSettingsSection: function() {
             const section = Utils.createElement('div', {
                 className: 'settings-section',
@@ -5448,13 +5797,22 @@ h1, h2, h3 { font-family: inherit; }
          * @param {HTMLElement | null} buttonElement - 로딩 애니메이션을 적용할 요소
          * @param {Object} [options={}] - 추가 옵션 (한영 입력창 등에서 직접 입력을 전달하기 위함)
          */
-        async execute(qrId, buttonElement, options = {}) {
-            Utils.toggleLoading(true, buttonElement);
+   
+		async execute(qrId, buttonElement, options = {}) {
+            // [수정] 버튼이 이미 로딩 상태이면 중복 실행 방지
+            if (buttonElement && (buttonElement.classList.contains('loading') || buttonElement.classList.contains('loading-text'))) {
+                return;
+            }
+
             try {
                 const mainQr = Storage.getQRById(qrId);
                 if (!mainQr) {
                     throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
                 }
+                
+                // [수정] 시작 시 AI 타입을 확인하여 토글 함수에 전달
+                const aiPreset = Storage.getAiPresetById(mainQr.aiPresetId) || Storage.getAiPresetById('ai-default');
+                Utils.toggleLoading(true, buttonElement, aiPreset ? aiPreset.type : null);
 
                 // 실행할 모든 QR의 ID 목록을 구성 (메인 QR + 동시 실행 QR)
                 const qrIdsToRun = [qrId];
@@ -5695,8 +6053,7 @@ h1, h2, h3 { font-family: inherit; }
             }
             return pText
         },
-
-        async _handlePostProcess(qr, response, buttonElement, executionPath) {
+async _handlePostProcess(qr, response, buttonElement, executionPath) {
             switch (qr.postProcess.action) {
                 case 'output_panel':
                     UI.toggleOutputPanel(true);
@@ -5753,6 +6110,15 @@ h1, h2, h3 { font-family: inherit; }
 
                 case 'multi_qr':
                     if (qr.postProcess.nextQrId) {
+                        // [추가] 다음 QR 실행 직전, 다음 QR의 AI 타입을 확인하여 로딩 상태 업데이트
+                        const nextQr = Storage.getQRById(qr.postProcess.nextQrId);
+                        if (nextQr) {
+                            const nextAiPreset = Storage.getAiPresetById(nextQr.aiPresetId) || Storage.getAiPresetById('ai-default');
+                            if (nextAiPreset) {
+                                Utils.toggleLoading(true, buttonElement, nextAiPreset.type);
+                            }
+                        }
+                        
                         const nextOptions = {
                             previousResponse: response,
                             insertSlot: qr.postProcess.insertSlot,
