@@ -4368,7 +4368,7 @@ h1, h2, h3 {
                             label: '본문입력'
                         }, {
                             value: 'image_panel',
-                            label: '보조창'
+                            label: '보조창 (삽화창)'
                         }, {
                             value: 'multi_qr',
                             label: '연속실행'
