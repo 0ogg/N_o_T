@@ -5805,42 +5805,44 @@ h1, h2, h3 {
                 return;
             }
 
-            try {
-                const mainQr = Storage.getQRById(qrId);
-                if (!mainQr) {
-                    throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
-                }
-                
-                // [수정] 시작 시 AI 타입을 확인하여 토글 함수에 전달
-                const aiPreset = Storage.getAiPresetById(mainQr.aiPresetId) || Storage.getAiPresetById('ai-default');
-                Utils.toggleLoading(true, buttonElement, aiPreset ? aiPreset.type : null);
+            const mainQr = Storage.getQRById(qrId);
+            if (!mainQr) {
+                alert(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
+                return;
+            }
 
-                // 실행할 모든 QR의 ID 목록을 구성 (메인 QR + 동시 실행 QR)
+            // 1. 초기 로딩 상태 설정
+            let currentAiType = null;
+            const initialAiPreset = Storage.getAiPresetById(mainQr.aiPresetId) || Storage.getAiPresetById('ai-default');
+            currentAiType = initialAiPreset ? initialAiPreset.type : null;
+            Utils.toggleLoading(true, buttonElement, currentAiType); // <<-- 원본 코드: 이 부분이 try 블록 밖에 있었음.
+
+            try {
+                // 실행할 모든 QR의 ID 목록을 구성
                 const qrIdsToRun = [qrId];
                 if (Array.isArray(mainQr.simultaneousQrIds)) {
-                    qrIdsToRun.push(...mainQr.simultaneousQrIds);
+                    // [수정] 메인 QR 중복 방지를 위한 필터 추가 (안전성 개선)
+                    qrIdsToRun.push(...mainQr.simultaneousQrIds.filter(id => id !== qrId));
                 }
-
-                // 모든 QR 실행을 병렬로 시작
-                const executionPromises = qrIdsToRun.map(id =>
-                    // options를 _executeInternal 함수로 전달하도록 수정
-                    this._executeInternal(id, buttonElement, {
-                        ...options,
-                        executionPath: []
-                    })
+                
+                // 동시 실행은 병렬로 처리합니다.
+                const mainExecutionPromise = this._executeInternal(qrId, buttonElement, { ...options, executionPath: [] });
+                const simultaneousPromises = qrIdsToRun.slice(1).map(id => 
+                    this._executeInternal(id, buttonElement, { ...options, executionPath: [] })
                 );
 
-                // 모든 실행이 완료될 때까지 대기
-                await Promise.all(executionPromises);
+                // 메인 실행이 끝날 때까지 대기
+                await Promise.all([mainExecutionPromise, ...simultaneousPromises]);
 
             } catch (error) {
-                console.error(`QR 동시 실행 중 오류 발생 (시작 QR: ${qrId}):`, error);
+                // 에러 발생 시 UI에 알림
+                console.error(`QR 실행 중 치명적인 오류 발생 (시작 QR: ${qrId}):`, error);
                 alert(`QR 실행 중 오류가 발생했습니다: ${error.message}`);
             } finally {
+                // [핵심 수정] 성공/실패 여부와 관계없이 로딩 상태를 **반드시** 해제
                 Utils.toggleLoading(false, buttonElement);
             }
         },
-
         /**
          * [수정] 단일 QR 실행을 처리하는 내부 함수. (기존 execute 함수에서 변경됨)
          * @param {string} qrId - 실행할 QR의 ID
@@ -5850,66 +5852,60 @@ h1, h2, h3 {
          */
 
         async _executeInternal(qrId, buttonElement, options = {}) {
-            // 1. 실행 경로 및 안전 장치 검사
             const executionPath = options.executionPath || [];
 
-            if (executionPath.length >= this.MAX_MULTI_QR_DEPTH) {
-                const pathString = executionPath.join(' -> ');
-                const errorMessage = `연속 QR 실행 깊이가 최대치(${this.MAX_MULTI_QR_DEPTH})에 도달했습니다. 실행을 중단합니다.\n경로: ${pathString}`;
-                throw new Error(errorMessage);
+            // 1. 안전 장치 (무한 루프 방지)
+            if (executionPath.length >= this.MAX_MULTI_QR_DEPTH || executionPath.includes(qrId)) {
+                // 상위 execute로 오류 던짐
+                throw new Error(executionPath.length >= this.MAX_MULTI_QR_DEPTH ? '연속 QR 깊이 초과' : '무한 루프 감지');
             }
-
-            if (executionPath.includes(qrId)) {
-                const loopPath = [...executionPath, qrId].join(' -> ');
-                const errorMessage = `연속 QR 실행에서 무한 루프가 감지되었습니다. 실행을 중단합니다.\n루프 경로: ${loopPath}`;
-                throw new Error(errorMessage);
-            }
-
             const newExecutionPath = [...executionPath, qrId];
 
             try {
-                // 2. 프리셋 및 데이터 로드
                 const qr = Storage.getQRById(qrId);
                 if (!qr) throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
+                
+                let aiPreset = Storage.getAiPresetById(qr.aiPresetId) || Storage.getAiPresetById('ai-default');
+                if (!aiPreset) throw new Error(`AI 프리셋을 찾을 수 없습니다.`);
 
-                let aiPreset = Storage.getAiPresetById(qr.aiPresetId);
-                if (!aiPreset) {
-                    console.warn(`QR '${qr.name}'에 연결된 AI 프리셋(ID: ${qr.aiPresetId})을 찾을 수 없어, 기본 폴백 AI 프리셋('ai-default')을 사용합니다.`);
-                    aiPreset = Storage.getAiPresetById('ai-default');
-                    if (!aiPreset) {
-                        throw new Error(`QR '${qr.name}'에 지정된 AI 프리셋이 없으며, 폴백용 기본 AI 프리셋('ai-default')도 찾을 수 없습니다.`);
-                    }
+                // 2. [핵심 복원] 연속 실행 중일 때, 다음 QR의 로딩 상태를 *여기서* 업데이트합니다.
+                if (executionPath.length > 0) { // 메인 QR의 첫 실행이 아닐 때만 (첫 실행은 execute에서 이미 처리)
+                    // 현재 AI 타입으로 로딩 애니메이션 업데이트
+                    Utils.toggleLoading(true, buttonElement, aiPreset.type);
                 }
 
-
-                // 3. 사용자 입력 수집
+                // 3. 사용자 입력 수집 및 프롬프트 조합 (생략 없음)
                 const userInputs = await this._collectUserInputs(qr, options);
-                if (userInputs === null) {
-                    // 사용자가 입력을 취소한 경우, 현재 실행 흐름만 조용히 종료
-                    return;
-                }
-
-                // 4. 프롬프트 조합
+                if (userInputs === null) return;
                 const fullPrompt = await this._assemblePrompt(qr, userInputs, options.previousResponse, options.insertSlot, aiPreset.type);
 
-                // 5. API 요청
+                // 4. API 요청 및 로깅 (생략 없음)
                 const apiResponse = await ApiHandler.request(aiPreset, fullPrompt);
 
-                // Firebase 로깅
                 if (FirebaseLogger.isEnabled()) {
                     FirebaseLogger.log(qr.id, qr.name, fullPrompt, apiResponse);
                 }
 
-                // 6. 후처리 실행 (업데이트된 실행 경로 전달)
-                await this._handlePostProcess(qr, apiResponse, buttonElement, newExecutionPath);
-
+                // 5. [로직 간소화] 후처리 중 'multi_qr'은 여기서 바로 다음 재귀 호출을 실행합니다.
+                if (qr.postProcess.action === 'multi_qr' && qr.postProcess.nextQrId) {
+                    const nextOptions = {
+                        previousResponse: apiResponse,
+                        insertSlot: qr.postProcess.insertSlot,
+                        executionPath: newExecutionPath
+                    };
+                    // 재귀 호출
+                    return this._executeInternal(qr.postProcess.nextQrId, buttonElement, nextOptions);
+                } else {
+                    // 일반 후처리 실행
+                    await this._handlePostProcess(qr, apiResponse, buttonElement, newExecutionPath);
+                    // 연속 실행이 아닌 경우, 이 함수는 완료되며 로딩 해제는 execute()의 finally가 처리합니다.
+                    return { finalResponse: apiResponse, finalAiType: aiPreset.type };
+                }
             } catch (error) {
-                // 오류를 다시 던져서 execute()의 Promise.all이 catch할 수 있도록 함
-                console.error(`내부 QR 실행 오류 (ID: ${qrId}):`, error);
+                // 내부 오류를 execute()의 catch 블록으로 전달
                 throw error;
             }
         },
-
         /**
          * [추가] NAI 본문의 모든 콘텐츠를 로드하기 위해 스크롤을 반복합니다.
          * @private
