@@ -1,237 +1,43 @@
 // ==UserScript==
-// @name         NovelAI 프롬프트 프리셋 매니저
+// @name         NovelAI 프롬프트 프리셋 매니저 v2.0.4
 // @namespace    http://tampermonkey.net/
-// @version      1.51
-// @description
-// @author       Claude
+// @version      2.0.4
+// @description  NovelAI의 프롬프트 관리를 위한 섹션 기반 UI, 프롬프트 부분 교체, 롱프레스 수정 등 고급 기능을 제공합니다.
+// @author       Claude (Based on original), Gemini (Refactoring)
 // @match        https://novelai.net/image*
 // @grant        none
 // ==/UserScript==
 (function() {
     'use strict';
 
+    // =================================================================================
     // 스타일 정의
+    // =================================================================================
     const style = document.createElement('style');
     style.innerHTML = `
-        :root {
-            --panel-background-color: white; /* 기본 배경색, CSS 변수 정의 */
-        }
-        .preset-button {
-            border: none;
-            padding: 4px 8px;
-            margin: 1px; /* 버튼 간격 1px로 조정 */
-            border-radius: 0px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background-color 0.3s ease;
-            background-color: #f0f0f0; /* 다른 버튼과 색 통일 */
-        }
-        .preset-button:hover {
-             background-color: #e0e0e0;
-        }
-        .delete-button {
-            width: 20px;
-            height: 20px;
-            padding: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            line-height: 1;
-            background-color: #f0f0f0; /* 삭제 버튼 색 통일 */
-        }
-        .delete-button:hover {
-            background-color: #e0e0e0;
-        }
-        .preset-input {
-            width: 100%;
-            padding: 6px;
-            border: 1px solid #888;
-            border-radius: 0px;
-        }
-        .preset-textarea {
-            width: 100%;
-            height: 70px;
-            overflow-y: auto;
-            border: 1px solid #888;
-            border-radius: 0px;
-            padding: 6px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-        .preset-select-div {
-            margin: 5px 0;
-            width: 100%;
-            border: 1px solid #888;
-            border-radius: 0px;
-            font-size: 0.9em;
-            cursor: pointer;
-            position: relative;
-            background-color: white;
-        }
-        .preset-select-div .select-header {
-            padding: 6px;
-        }
-        .preset-select-div .select-options {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            border: 1px solid #888;
-            border-top: none;
-            border-radius: 0px;
-            background-color: white;
-            z-index: 10;
-            display: none;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        .preset-select-div .select-options.show {
-            display: block;
-        }
-        .preset-select-div .select-option {
-            padding: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-        .preset-select-div .select-option:hover {
-            background-color: #f0f0f0;
-        }
-        .dialog {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 1px solid #666;
-            padding: 20px;
-            z-index: 10000;
-            max-width: 500px;
-            min-width: 300px;
-            max-height: 80%;
-            overflow-y: auto;
-            border-radius: 0px;
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
-            font-family: sans-serif;
-            background-color: var(--panel-background-color); /* CSS 변수 적용 */
-        }
-        .ui-panel {
-            position: fixed;
-            top: 0px;
-            right: 0px;
-            width: 300px;
-            height: 100vh;
-            overflow-y: auto;
-            border-left: 1px solid #666;
-            padding: 15px;
-            display: none;
-            z-index: 9998;
-            font-family: sans-serif;
-            box-shadow: -3px 0px 10px rgba(0,0,0,0.3);
-            background-color: var(--panel-background-color); /* CSS 변수 적용 */
-        }
-        .toggle-button {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            width: 50px;
-            height: 50px;
-            border: 1px solid #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 9999;
-            border-radius: 10%;
-            font-size: 1.2em;
-            backdrop-filter: blur(5px);
-            background-color: var(--panel-background-color); /* CSS 변수 적용 */
-        }
-        .category-tab-button {
-            flex-grow: 1;
-            padding: 5px;
-            border-bottom: none;
-            border-radius: 0px 0px 0 0;
-            margin-bottom: -1px;
-            font-size: 0.9em;
-            background-color: #f0f0f0; /* 탭 버튼 색 통일 */
-            border: 1px solid #666;
-            border-bottom: none; /* 하단 테두리 제거 */
-            text-decoration: none !important; /* 밑줄 제거 */
-            font-weight: normal; /* 기본 굵기 */
-        }
-        .category-tab-button.active {
-            background-color: #ffffff; /* 활성 탭 배경색 */
-            font-weight: bold; /* 활성 탭 굵게 */
-        }
-        .category-tab-button:hover {
-            background-color: #e0e0e0;
-        }
-        .dialog-tab-button {
-            padding: 8px 15px;
-            border: 1px solid #888;
-            border-radius: 0px;
-            cursor: pointer;
-            background-color: #f0f0f0;
-            font-size: 0.9em;
-            margin-right: 5px;
-        }
-        .dialog-tab-button.active {
-            background-color: #ffffff;
-            font-weight: bold;
-        }
-        .dialog-tab-button:hover {
-             background-color: #e0e0e0;
-        }
-        /* 온/오프 스위치 스타일 */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-            margin-right: 6px;
-        }
+        :root { --panel-background-color: white; }
+        .p-manager-button { border: none; padding: 4px 8px; margin: 1px; border-radius: 0px; cursor: pointer; font-size: 0.9em; transition: background-color 0.3s ease; background-color: #f0f0f0; }
+        .p-manager-button:hover { background-color: #e0e0e0; }
+        .p-manager-input { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #888; border-radius: 0px; }
+        .p-manager-textarea { width: 100%; box-sizing: border-box; height: 100px; overflow-y: auto; border: 1px solid #888; border-radius: 0px; padding: 6px; font-family: monospace; font-size: 0.9em; }
+        .p-manager-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #666; padding: 20px; z-index: 10000; max-width: 500px; min-width: 350px; max-height: 80%; overflow-y: auto; border-radius: 0px; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-family: sans-serif; background-color: var(--panel-background-color); }
+        .p-manager-dialog-section { margin-bottom: 15px; }
+        .p-manager-dialog-label { display: block; margin-bottom: 3px; font-weight: bold; }
+        .p-manager-ui-panel { position: fixed; top: 0px; right: 0px; width: 300px; height: 100vh; overflow-y: auto; border-left: 1px solid #666; padding: 15px; display: none; z-index: 9998; font-family: sans-serif; box-shadow: -3px 0px 10px rgba(0,0,0,0.3); background-color: var(--panel-background-color); box-sizing: border-box; }
+        .p-manager-toggle-button { position: fixed; bottom: 10px; right: 10px; width: 50px; height: 50px; border: 1px solid #666; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; border-radius: 10%; font-size: 1.2em; backdrop-filter: blur(5px); background-color: var(--panel-background-color); }
+        .p-manager-section { border-bottom: 1px solid #ccc; margin-bottom: 15px; padding-bottom: 10px; }
+        .p-manager-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .p-manager-section-title { font-weight: bold; font-size: 1.1em; }
+        .p-manager-preset-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+        .p-manager-preset-button { flex-grow: 0; white-space: nowrap; text-align: left; padding: 6px; font-size: 0.9em; }
+        .p-manager-toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; margin-right: 6px; }
+        .p-manager-toggle-switch input[type="checkbox"] { display: none; }
+        .p-manager-toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .p-manager-toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .p-manager-toggle-slider { background-color: #2196F3; }
+        input:checked + .p-manager-toggle-slider:before { transform: translateX(20px); }
 
-        .toggle-switch input[type="checkbox"] {
-            display: none; /* 체크박스 숨김 */
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 20px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .toggle-slider {
-            background-color: #2196F3; /* 활성화 색상 */
-        }
-
-        input:focus + .toggle-slider {
-            box-shadow: 0 0 1px #2196F3;
-        }
-
-        input:checked + .toggle-slider:before {
-            transform: translateX(20px); /* 오른쪽으로 이동 */
-        }
-
-        /* 이미지 미러링 패널 스타일 (추가) */
+        /* ★★★ '크게 보기' CSS 원본 방식으로 복원 ★★★ */
         #image-mirror-panel {
             position: fixed;
             top: 0;
@@ -245,107 +51,785 @@
             box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
             transition: transform 0.3s ease;
         }
-
+        #image-mirror-panel.hidden {
+            transform: translateX(1000px);
+        }
         #image-mirror-panel img {
             display: block;
             max-width: 100%;
             height: auto;
             cursor: pointer;
         }
-
-        #image-mirror-panel.hidden {
-            transform: translateX(1000px);
-        }
     `;
     document.head.appendChild(style);
 
-    // 메인 데이터 구조
+    // =================================================================================
+    // 데이터 구조 및 관리
+    // =================================================================================
+    const getLocalStorage = (key, defaultValue) => {
+        const storedValue = localStorage.getItem(key);
+        return storedValue ? JSON.parse(storedValue) : defaultValue;
+    };
+
     const presetData = {
-        main: getLocalStorage('main_presets', []),
-        UC: getLocalStorage('UC_presets', []),
-        character: getLocalStorage('character_presets', []),
-        fullSetPresets: getLocalStorage('fullSet_Presets', [])
+        settings: getLocalStorage('p_manager_settings', {
+            delimiter: '|| | ||',
+            autoSave: true,
+            largeView: false
+        }),
+        fullSet: getLocalStorage('p_manager_fullSet_presets', []),
+        artist: getLocalStorage('p_manager_artist_presets', []),
+        quality: getLocalStorage('p_manager_quality_presets', []),
+        main: getLocalStorage('p_manager_main_presets', []),
+        UC: getLocalStorage('p_manager_UC_presets', []),
+        character: getLocalStorage('p_manager_character_presets', [])
     };
 
-    // 현재 활성화된 카테고리 탭
-    let activeCategoryTab = 'main';
-    let activeDialogCategoryTab = 'main'; // dialog 내부 탭
+    const saveData = () => {
+        Object.keys(presetData).forEach(key => {
+            if (key !== 'settings') {
+                localStorage.setItem(`p_manager_${key}_presets`, JSON.stringify(presetData[key]));
+            }
+        });
+        localStorage.setItem('p_manager_settings', JSON.stringify(presetData.settings));
+    };
 
-    // 현재 열려있는 내용 다이얼로그
-    let currentContentDialog = null;
+    // =================================================================================
+    // DOM 및 NovelAI 인터페이스 제어
+    // =================================================================================
+    const getPromptAreas = () => {
+        const allProseMirrors = Array.from(document.querySelectorAll('.ProseMirror'));
+        const visibleCount = Math.floor(allProseMirrors.length / 2);
+        return allProseMirrors.slice(0, visibleCount);
+    };
 
-   // 현재 열려있는 select options div
-    let currentSelectOptions = null;
+    const getPromptAreaContent = (index) => {
+        const areas = getPromptAreas();
+        return areas[index] ? areas[index].textContent : '';
+    };
 
-    // 이미지 미러링 관련 변수
-    const PANEL_WIDTH = 1220;
-    const PANEL_ID = 'image-mirror-panel';
+    const setPromptAreaContent = (index, content) => {
+        const areas = getPromptAreas();
+        if (!areas[index]) return;
+        const targetArea = areas[index];
+
+        while (targetArea.firstChild) {
+            targetArea.removeChild(targetArea.firstChild);
+        }
+
+        if (content) {
+            targetArea.appendChild(document.createTextNode(content));
+        }
+
+        targetArea.dispatchEvent(new Event('input', {
+            bubbles: true
+        }));
+    };
+
+    // =================================================================================
+    // 핵심 로직: 프리셋 적용
+    // =================================================================================
+    const applyPreset = (category, content) => {
+        if (presetData.settings.autoSave) {
+            let oldContent = '';
+            let targetCategory = category.startsWith('character') ? 'character' : category;
+            const charIndex = category.startsWith('character') ? parseInt(category.replace('character', ''), 10) : -1;
+
+            if (charIndex !== -1) {
+                oldContent = getPromptAreaContent(2 + charIndex).trim();
+            } else if (['artist', 'quality', 'main'].includes(category)) {
+                const parts = getPromptAreaContent(0).split(presetData.settings.delimiter);
+                const partIndex = ['artist', 'quality', 'main'].indexOf(category);
+                oldContent = (parts[partIndex] || '').trim();
+            } else if (category === 'UC') {
+                oldContent = getPromptAreaContent(1).trim();
+            }
+
+            if (oldContent && !presetData[targetCategory].some(p => p.content === oldContent)) {
+                // --- 제목 생성 로직 시작 ---
+                let titleBase = oldContent.trim();
+
+                // 1. 가장 앞에 오는 boy, girl, other 단어 (및 뒤따르는 공백/쉼표) 제거 (대소문자 무시)
+                titleBase = titleBase.replace(/^(boy|girl|other)\b\s*,*\s*/i, '');
+
+                // 2. 그 외, 가장 앞에 남은 쉼표나 공백이 있다면 모두 제거
+                titleBase = titleBase.replace(/^[, ]+/, '');
+
+                // 3. 앞에서부터 10글자만 남김
+                let finalTitle = titleBase.substring(0, 10);
+
+                // 4. 모든 처리 후 제목이 비어있다면, 시간으로 된 기본 제목 사용
+                if (!finalTitle) {
+                    finalTitle = `AutoSave ${new Date().toLocaleTimeString()}`;
+                }
+                // --- 제목 생성 로직 끝 ---
+
+                presetData[targetCategory].push({
+                    title: finalTitle,
+                    content: oldContent
+                });
+                saveData();
+            }
+        }
+
+        if (category.startsWith('character')) {
+            const charIndex = parseInt(category.replace('character', ''), 10);
+            setPromptAreaContent(2 + charIndex, content);
+        } else if (category === 'UC') {
+            setPromptAreaContent(1, content);
+        } else {
+            const mainContent = getPromptAreaContent(0);
+            let parts = mainContent.split(presetData.settings.delimiter);
+            while (parts.length < 3) parts.push('');
+            const partIndex = ['artist', 'quality', 'main'].indexOf(category);
+            parts[partIndex] = content;
+            setPromptAreaContent(0, parts.join(presetData.settings.delimiter));
+        }
+        renderPanel();
+    };
+
+    const applyFullSet = (preset) => {
+        if (!preset || !preset.prompts) return;
+        const mainPrompt = [preset.prompts.artist || '', preset.prompts.quality || '', preset.prompts.main || ''].join(presetData.settings.delimiter);
+        setPromptAreaContent(0, mainPrompt);
+        setPromptAreaContent(1, preset.prompts.UC || '');
+        (preset.prompts.character || []).forEach((charPrompt, i) => {
+            setPromptAreaContent(i + 2, charPrompt);
+        });
+    };
+
+    // =================================================================================
+    // ★★★ 1. 여기에 새로운 유틸리티 함수 추가 ★★★
+    // =================================================================================
+    const Utils = {
+        copyToClipboard: (text) => {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('클립보드에 복사되었습니다.');
+        },
+        downloadFile: (content, fileName, mimeType) => {
+            const blob = new Blob([content], {
+                type: mimeType
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    };
+    // =================================================================================
+    // ★★★ 2. 여기에 백업/복원 로직 추가 ★★★
+    // =================================================================================
+    const backupRestore = {
+        STORAGE_KEYS: [
+            'p_manager_settings',
+            'p_manager_fullSet_presets',
+            'p_manager_artist_presets',
+            'p_manager_quality_presets',
+            'p_manager_main_presets',
+            'p_manager_UC_presets',
+            'p_manager_character_presets'
+        ],
+
+        backup: function() {
+            const backupData = {};
+            this.STORAGE_KEYS.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value !== null) {
+                    backupData[key] = value;
+                }
+            });
+            return JSON.stringify(backupData, null, 2);
+        },
+
+        restore: function(jsonString) {
+            try {
+                const dataToRestore = JSON.parse(jsonString);
+                let restoredKeyCount = 0;
+                this.STORAGE_KEYS.forEach(key => {
+                    if (dataToRestore[key] !== undefined) {
+                        localStorage.setItem(key, dataToRestore[key]);
+                        restoredKeyCount++;
+                    }
+                });
+                if (restoredKeyCount === 0) {
+                    alert('복원할 유효한 설정 데이터를 찾지 못했습니다. 파일이 올바른지 확인하세요.');
+                    return;
+                }
+                alert(`설정을 복원했습니다. 모든 변경사항을 적용하려면 페이지를 새로고침하세요.`);
+                location.reload(); // 즉시 새로고침하여 변경사항 적용
+            } catch (e) {
+                console.error('설정 복원 실패:', e);
+                alert('설정 복원에 실패했습니다. JSON 형식이 올바르지 않거나 파일이 손상되었습니다.');
+            }
+        }
+    };
+
+    // =================================================================================
+    // UI 렌더링
+    // =================================================================================
+    let currentDialog = null;
+
+    const closeDialog = () => {
+        if (currentDialog) {
+            document.body.removeChild(currentDialog);
+            currentDialog = null;
+        }
+    };
+
+    const createDialog = (title, content, buttons) => {
+        closeDialog();
+        const dialog = document.createElement('div');
+        dialog.className = 'p-manager-dialog';
+        let html = `<h3>${title}</h3><hr style="margin: 8px 0; border: none; border-top: 1px solid #888;">`;
+        html += content;
+        html += `<div style="text-align: right; margin-top: 15px;">`;
+        buttons.forEach(btn => {
+            const style = btn.type === 'delete' ? 'background-color: #f8d7da; margin-right: auto;' : 'margin-left: 5px;';
+            html += `<button id="${btn.id}" class="p-manager-button" style="${style}">${btn.text}</button>`;
+        });
+        html += `</div>`;
+        dialog.innerHTML = html;
+        document.body.appendChild(dialog);
+        currentDialog = dialog;
+
+        buttons.forEach(btn => {
+            document.getElementById(btn.id).addEventListener('click', btn.onClick);
+        });
+    };
+
+    const showEditDialog = (category, index) => {
+        const preset = presetData[category][index];
+        createDialog('프리셋 수정',
+            `<div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">제목:</label>
+                <input type="text" id="edit-preset-title" class="p-manager-input" value="${preset.title}">
+            </div>
+            <div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">내용:</label>
+                <textarea id="edit-preset-content" class="p-manager-textarea">${preset.content}</textarea>
+            </div>`,
+            [{
+                id: 'edit-preset-delete',
+                text: '삭제',
+                type: 'delete',
+                onClick: () => {
+                    if (confirm('정말로 삭제하시겠습니까?')) {
+                        presetData[category].splice(index, 1);
+                        saveData();
+                        renderPanel();
+                        closeDialog();
+                    }
+                }
+            }, {
+                id: 'edit-preset-cancel',
+                text: '취소',
+                onClick: closeDialog
+            }, {
+                id: 'edit-preset-confirm',
+                text: '저장',
+                onClick: () => {
+                    const newTitle = document.getElementById('edit-preset-title').value.trim();
+                    const newContent = document.getElementById('edit-preset-content').value;
+                    if (!newTitle) return;
+                    presetData[category][index] = {
+                        title: newTitle,
+                        content: newContent
+                    };
+                    saveData();
+                    renderPanel();
+                    closeDialog();
+                }
+            }]
+        );
+    };
+
+    const showAddDialog = (category, defaultContent = '') => {
+        createDialog('새 프리셋 추가',
+            `<div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">제목:</label>
+                <input type="text" id="add-preset-title" class="p-manager-input">
+            </div>
+            <div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">내용:</label>
+                <textarea id="add-preset-content" class="p-manager-textarea">${defaultContent}</textarea>
+            </div>`,
+            [{
+                id: 'add-preset-cancel',
+                text: '취소',
+                onClick: closeDialog
+            }, {
+                id: 'add-preset-confirm',
+                text: '저장',
+                onClick: () => {
+                    const title = document.getElementById('add-preset-title').value.trim();
+                    const content = document.getElementById('add-preset-content').value;
+                    if (!title) return;
+                    let targetCategory = category.startsWith('character') ? 'character' : category;
+                    presetData[targetCategory].push({
+                        title,
+                        content
+                    });
+                    saveData();
+                    renderPanel();
+                    closeDialog();
+                }
+            }]
+        );
+    };
+
+    const showSettingsDialog = () => {
+        const dialogContent = `
+            <div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">메인 프롬프트 구분자:</label>
+                <input type="text" id="settings-delimiter" class="p-manager-input" value="${presetData.settings.delimiter}">
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <label class="p-manager-toggle-switch">
+                    <input type="checkbox" id="settings-auto-save" ${presetData.settings.autoSave ? 'checked' : ''}>
+                    <span class="p-manager-toggle-slider"></span>
+                </label>
+                <label for="settings-auto-save">프리셋 전환 시 기존 프롬프트 자동 저장</label>
+            </div>
+
+            <hr style="margin: 20px 0; border-color: rgba(0,0,0,0.1);">
+
+            <div class="p-manager-dialog-section">
+                <h4 style="margin-top:0; margin-bottom: 10px;">데이터 관리</h4>
+                <div style="display: flex; gap: 10px;">
+                    <button id="export-settings-btn" class="p-manager-button">설정 내보내기</button>
+                    <button id="import-settings-btn" class="p-manager-button">설정 가져오기</button>
+                </div>
+            </div>
+        `;
+
+        createDialog('설정', dialogContent, [{
+            id: 'settings-cancel',
+            text: '닫기', // '취소' -> '닫기'로 변경
+            onClick: closeDialog
+        }, {
+            id: 'settings-confirm',
+            text: '저장',
+            onClick: () => {
+                presetData.settings.delimiter = document.getElementById('settings-delimiter').value;
+                presetData.settings.autoSave = document.getElementById('settings-auto-save').checked;
+                saveData();
+                closeDialog();
+            }
+        }]);
+
+        // --- 내보내기/가져오기 버튼에 이벤트 리스너 추가 ---
+        document.getElementById('export-settings-btn').addEventListener('click', () => {
+            const backupJson = backupRestore.backup();
+            const exportDialogContent = `
+                <p style="font-size: 0.9em; margin-top:0;">아래 텍스트를 복사하거나 파일로 다운로드하여 설정을 백업하세요.</p>
+                <textarea readonly class="p-manager-textarea" style="height: 200px;">${backupJson}</textarea>
+            `;
+            createDialog('설정 내보내기', exportDialogContent, [{
+                    id: 'export-close',
+                    text: '닫기',
+                    onClick: closeDialog
+                },
+                {
+                    id: 'export-copy',
+                    text: '클립보드에 복사',
+                    onClick: () => Utils.copyToClipboard(backupJson)
+                },
+                {
+                    id: 'export-download',
+                    text: '파일로 다운로드',
+                    onClick: () => Utils.downloadFile(backupJson, `preset_manager_backup_${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
+                }
+            ]);
+        });
+
+        document.getElementById('import-settings-btn').addEventListener('click', () => {
+            const importDialogContent = `
+                <p style="font-size: 0.9em; margin-top:0;">백업한 JSON 텍스트를 아래에 붙여넣으세요.<br><b>주의: 현재 설정은 덮어쓰여집니다.</b></p>
+                <textarea id="import-json-area" class="p-manager-textarea" style="height: 200px;" placeholder="여기에 백업 데이터를 붙여넣으세요..."></textarea>
+            `;
+            createDialog('설정 가져오기', importDialogContent, [{
+                    id: 'import-cancel',
+                    text: '취소',
+                    onClick: closeDialog
+                },
+                {
+                    id: 'import-restore',
+                    text: '복원하기',
+                    onClick: () => {
+                        const jsonString = document.getElementById('import-json-area').value;
+                        if (jsonString.trim()) {
+                            if (confirm('현재 설정을 덮어쓰고 복원하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                                backupRestore.restore(jsonString);
+                            }
+                        } else {
+                            alert('붙여넣은 데이터가 없습니다.');
+                        }
+                    }
+                }
+            ]);
+        });
+    };
+
+    const showSaveCurrentDialog = () => {
+        const mainParts = getPromptAreaContent(0).split(presetData.settings.delimiter);
+        while (mainParts.length < 3) mainParts.push('');
+        const characterAreas = getPromptAreas().slice(2);
+        let dialogContent = `
+            <div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">프리셋 세트 제목 (입력 시 세트로 저장):</label>
+                <input type="text" id="save-set-title" class="p-manager-input" placeholder="세트 이름">
+            </div><hr>
+            <p style="font-size:0.9em; margin-top:-5px; margin-bottom:10px;">각 항목에 제목을 입력하면 개별 프리셋으로도 저장됩니다.</p>`;
+        const fields = [{
+                key: 'artist',
+                title: '작가',
+                content: mainParts[0]
+            },
+            {
+                key: 'quality',
+                title: '퀄리티 태그',
+                content: mainParts[1]
+            },
+            {
+                key: 'main',
+                title: '메인 프롬프트',
+                content: mainParts[2]
+            },
+            {
+                key: 'UC',
+                title: 'UC 프롬프트',
+                content: getPromptAreaContent(1)
+            }
+        ];
+        characterAreas.forEach((_, i) => {
+            fields.push({
+                key: `character${i}`,
+                title: `캐릭터 ${i+1}`,
+                content: getPromptAreaContent(i + 2)
+            });
+        });
+        fields.forEach(field => {
+            dialogContent += `
+                <div class="p-manager-dialog-section">
+                    <label class="p-manager-dialog-label">${field.title}</label>
+                    <input type="text" id="save-title-${field.key}" class="p-manager-input" placeholder="개별 프리셋 제목 (선택)" style="margin-bottom: 4px;">
+                    <textarea id="save-content-${field.key}" class="p-manager-textarea" style="height: 60px;">${field.content}</textarea>
+                </div>`;
+        });
+        createDialog('현재 프롬프트 저장', dialogContent, [{
+            id: 'save-all-cancel',
+            text: '취소',
+            onClick: closeDialog
+        }, {
+            id: 'save-all-confirm',
+            text: '저장',
+            onClick: () => {
+                const fullSetTitle = document.getElementById('save-set-title').value.trim();
+                const savedPrompts = {};
+                fields.forEach(field => {
+                    const title = document.getElementById(`save-title-${field.key}`).value.trim();
+                    const content = document.getElementById(`save-content-${field.key}`).value;
+                    const isCharField = field.key.startsWith('character');
+                    let targetCategory = isCharField ? 'character' : field.key;
+                    if (isCharField) {
+                        const charIndex = parseInt(field.key.replace('character', ''), 10);
+                        if (!savedPrompts.character) savedPrompts.character = [];
+                        savedPrompts.character[charIndex] = content;
+                    } else {
+                        savedPrompts[field.key] = content;
+                    }
+                    if (title && content) {
+                        presetData[targetCategory].push({
+                            title,
+                            content
+                        });
+                    }
+                });
+                if (fullSetTitle) {
+                    presetData.fullSet.push({
+                        title: fullSetTitle,
+                        prompts: savedPrompts
+                    });
+                }
+                saveData();
+                renderPanel();
+                closeDialog();
+            }
+        }]);
+    };
+
+    const showEditSetDialog = (index) => {
+        const set = presetData.fullSet[index];
+        const characterPrompts = set.prompts.character || [];
+        let dialogContent = `
+            <div class="p-manager-dialog-section">
+                <label class="p-manager-dialog-label">프리셋 세트 제목:</label>
+                <input type="text" id="edit-set-title" class="p-manager-input" value="${set.title}">
+            </div><hr>`;
+        const fields = [{
+                key: 'artist',
+                title: '작가',
+                content: set.prompts.artist || ''
+            },
+            {
+                key: 'quality',
+                title: '퀄리티 태그',
+                content: set.prompts.quality || ''
+            },
+            {
+                key: 'main',
+                title: '메인 프롬프트',
+                content: set.prompts.main || ''
+            },
+            {
+                key: 'UC',
+                title: 'UC 프롬프트',
+                content: set.prompts.UC || ''
+            }
+        ];
+        characterPrompts.forEach((prompt, i) => {
+            fields.push({
+                key: `character${i}`,
+                title: `캐릭터 ${i+1}`,
+                content: prompt
+            });
+        });
+        fields.forEach(field => {
+            dialogContent += `
+                <div class="p-manager-dialog-section">
+                    <label class="p-manager-dialog-label">${field.title}</label>
+                    <textarea id="edit-set-content-${field.key}" class="p-manager-textarea" style="height: 60px;">${field.content}</textarea>
+                </div>`;
+        });
+        createDialog('프리셋 세트 수정', dialogContent, [{
+            id: 'delete-set-btn',
+            text: '세트 삭제',
+            type: 'delete',
+            onClick: () => {
+                if (confirm(`'${set.title}' 세트를 정말로 삭제하시겠습니까?`)) {
+                    presetData.fullSet.splice(index, 1);
+                    saveData();
+                    renderPanel();
+                    closeDialog();
+                }
+            }
+        }, {
+            id: 'edit-set-cancel',
+            text: '취소',
+            onClick: closeDialog
+        }, {
+            id: 'edit-set-confirm',
+            text: '저장',
+            onClick: () => {
+                const newTitle = document.getElementById('edit-set-title').value.trim();
+                if (!newTitle) return;
+                const newPrompts = {};
+                fields.forEach(field => {
+                    const content = document.getElementById(`edit-set-content-${field.key}`).value;
+                    if (field.key.startsWith('character')) {
+                        const charIndex = parseInt(field.key.replace('character', ''), 10);
+                        if (!newPrompts.character) newPrompts.character = [];
+                        newPrompts.character[charIndex] = content;
+                    } else {
+                        newPrompts[field.key] = content;
+                    }
+                });
+                presetData.fullSet[index] = {
+                    title: newTitle,
+                    prompts: newPrompts
+                };
+                saveData();
+                renderPanel();
+                closeDialog();
+            }
+        }]);
+    };
+
+    const renderPresetButtons = (container, category) => {
+        container.innerHTML = '';
+        const isCharField = category.startsWith('character');
+        const presets = isCharField ? presetData.character : presetData[category];
+        if (!presets) return;
+
+        presets.forEach((preset, index) => {
+            const button = document.createElement('button');
+            button.textContent = preset.title;
+            button.className = 'p-manager-button p-manager-preset-button';
+            let timer;
+            let isLongPress = false;
+            const startPress = (e) => {
+                e.preventDefault();
+                isLongPress = false;
+                timer = setTimeout(() => {
+                    isLongPress = true;
+                    if (category === 'fullSet') {
+                        showEditSetDialog(index);
+                    } else {
+                        showEditDialog(isCharField ? 'character' : category, index);
+                    }
+                }, 500);
+            };
+            const endPress = () => {
+                clearTimeout(timer);
+                if (!isLongPress) {
+                    if (category === 'fullSet') {
+                        applyFullSet(preset);
+                    } else {
+                        applyPreset(category, preset.content);
+                    }
+                }
+            };
+            button.addEventListener('mousedown', startPress);
+            button.addEventListener('mouseup', endPress);
+            button.addEventListener('mouseleave', () => clearTimeout(timer));
+            button.addEventListener('touchstart', startPress);
+            button.addEventListener('touchend', endPress);
+            container.appendChild(button);
+        });
+    };
+
+    const renderPanel = () => {
+        const panel = document.getElementById('p-manager-panel');
+        if (!panel) return;
+        panel.innerHTML = '';
+
+        const controlContainer = document.createElement('div');
+        controlContainer.style.cssText = 'display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;';
+        const largeViewSwitchContainer = document.createElement('div');
+        largeViewSwitchContainer.style.cssText = 'display: flex; align-items: center; flex-grow: 1;';
+        largeViewSwitchContainer.innerHTML = `
+            <label class="p-manager-toggle-switch">
+                <input type="checkbox" id="large-view-toggle" ${presetData.settings.largeView ? 'checked' : ''}>
+                <span class="p-manager-toggle-slider"></span>
+            </label>
+            <label for="large-view-toggle">크게 보기</label>`;
+        const settingsButton = document.createElement('button');
+        settingsButton.textContent = '설정';
+        settingsButton.className = 'p-manager-button';
+        settingsButton.addEventListener('click', showSettingsDialog);
+        const saveCurrentButton = document.createElement('button');
+        saveCurrentButton.textContent = '현재 저장';
+        saveCurrentButton.className = 'p-manager-button';
+        saveCurrentButton.addEventListener('click', showSaveCurrentDialog);
+        controlContainer.appendChild(largeViewSwitchContainer);
+        controlContainer.appendChild(settingsButton);
+        controlContainer.appendChild(saveCurrentButton);
+        panel.appendChild(controlContainer);
+        document.getElementById('large-view-toggle').addEventListener('change', (e) => {
+            presetData.settings.largeView = e.target.checked;
+            toggleImageMonitoring(e.target.checked);
+            saveData();
+        });
+
+        const sections = [{
+            key: 'fullSet',
+            title: '프리셋 세트'
+        }, {
+            key: 'artist',
+            title: '작가'
+        }, {
+            key: 'quality',
+            title: '퀄리티 태그'
+        }, {
+            key: 'main',
+            title: '메인 프롬프트'
+        }, {
+            key: 'UC',
+            title: 'UC 프롬프트'
+        }];
+        getPromptAreas().slice(2).forEach((_, i) => {
+            sections.push({
+                key: `character${i}`,
+                title: `캐릭터 ${i+1}`
+            });
+        });
+        sections.forEach(sectionInfo => {
+            const section = document.createElement('div');
+            section.className = 'p-manager-section';
+            const header = document.createElement('div');
+            header.className = 'p-manager-section-header';
+            const title = document.createElement('div');
+            title.textContent = sectionInfo.title;
+            title.className = 'p-manager-section-title';
+            const addButton = document.createElement('button');
+            addButton.textContent = '+ 추가';
+            addButton.className = 'p-manager-button';
+            if (sectionInfo.key !== 'fullSet') {
+                addButton.addEventListener('click', () => showAddDialog(sectionInfo.key));
+            } else {
+                addButton.style.display = 'none';
+            }
+            header.appendChild(title);
+            header.appendChild(addButton);
+            const grid = document.createElement('div');
+            grid.className = 'p-manager-preset-grid';
+            section.appendChild(header);
+            section.appendChild(grid);
+            panel.appendChild(section);
+            renderPresetButtons(grid, sectionInfo.key);
+        });
+    };
+
+    // =================================================================================
+    // ★★★ 이미지 크게 보기 기능 (원본 방식으로 완전 복원) ★★★
+    // =================================================================================
+    let imageObserver = null;
     let lastBlobUrl = null;
-    let panel = null;
-    let imageObserver = null; // MutationObserver 인스턴스 저장
+    let mirrorPanel = null;
 
-
-    // 이미지 미러링 패널 생성
     const createMirrorPanel = () => {
-        if (panel) return panel;
-
-        panel = document.createElement('div');
-        panel.id = PANEL_ID;
-        panel.className = 'hidden';
-        document.body.appendChild(panel);
-
-        return panel;
+        if (mirrorPanel) return mirrorPanel;
+        mirrorPanel = document.createElement('div');
+        mirrorPanel.id = 'image-mirror-panel';
+        mirrorPanel.className = 'hidden';
+        document.body.appendChild(mirrorPanel);
+        return mirrorPanel;
     };
 
-    // 이미지 미러링 패널에 이미지 표시
     const displayImage = (imageUrl) => {
         if (lastBlobUrl === imageUrl) return;
         lastBlobUrl = imageUrl;
-
         const panel = createMirrorPanel();
         panel.innerHTML = '';
         panel.className = '';
-
         const img = document.createElement('img');
         img.src = imageUrl;
         img.onclick = () => {
             panel.className = 'hidden';
         };
-
         panel.appendChild(img);
     };
 
-
-    // 이미지 모니터링 시작/중지 함수
     function toggleImageMonitoring(enabled) {
         if (enabled) {
-            if (imageObserver) return; // 이미 실행 중이면 중복 실행 방지
-
+            if (imageObserver) return;
             imageObserver = new MutationObserver((mutations) => {
                 mutations.forEach(mutation => {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-                        const src = mutation.target.src;
-                        if (src && src.startsWith('blob:')) {
-                            displayImage(src);
+                    const checkNode = (node) => {
+                        if (node.nodeName === 'IMG' && node.src && node.src.startsWith('blob:')) {
+                            displayImage(node.src);
                         }
+                        if (node.querySelectorAll) {
+                            node.querySelectorAll('img[src^="blob:"]').forEach(img => displayImage(img.src));
+                        }
+                    };
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+                        checkNode(mutation.target);
                     }
-
                     if (mutation.addedNodes.length) {
-                        mutation.addedNodes.forEach(node => {
-                            if (node.nodeName === 'IMG' && node.src && node.src.startsWith('blob:')) {
-                                displayImage(node.src);
-                            }
-
-                            // 자식 노드 확인
-                            if (node.querySelectorAll) {
-                                const images = node.querySelectorAll('img[src^="blob:"]');
-                                images.forEach(img => displayImage(img.src));
-                            }
-                        });
+                        mutation.addedNodes.forEach(checkNode);
                     }
                 });
             });
-
             imageObserver.observe(document.body, {
                 attributes: true,
                 attributeFilter: ['src'],
@@ -355,909 +839,53 @@
         } else {
             if (imageObserver) {
                 imageObserver.disconnect();
-                imageObserver = null; // 옵저버 해제
+                imageObserver = null;
             }
-            // 패널 숨김 처리 (필요한 경우)
-            if(panel) {
-               panel.className = 'hidden';
+            const panel = document.getElementById('image-mirror-panel');
+            if (panel) {
+                panel.className = 'hidden';
             }
-            lastBlobUrl = null; // 마지막 이미지 URL 초기화
-
+            lastBlobUrl = null;
         }
     }
 
-    // 로컬 스토리지에서 데이터를 가져오는 헬퍼 함수
-    function getLocalStorage(key, defaultValue) {
-        const storedValue = localStorage.getItem(key);
-        return storedValue ? JSON.parse(storedValue) : defaultValue;
-    }
-
-    // 로컬 스토리지에 데이터 저장
-    function saveData() {
-        localStorage.setItem('main_presets', JSON.stringify(presetData.main));
-        localStorage.setItem('UC_presets', JSON.stringify(presetData.UC));
-        localStorage.setItem('character_presets', JSON.stringify(presetData.character));
-        localStorage.setItem('fullSet_Presets', JSON.stringify(presetData.fullSetPresets));
-    }
-
-    // UI 전체 갱신 함수
-    function refreshUI() {
-        renderPresetPanel();
-        renderSlotSelectBoxes();
-        createSlotButtons();
-    }
-
-    // 메인 UI 컨테이너 생성 및 추가
-    let toggleButton;
-        toggleButton = document.createElement('div');
-        toggleButton.id = 'preset-toggle';
+    // =================================================================================
+    // 초기화
+    // =================================================================================
+    let isInitialized = false;
+    const init = () => {
+        if (isInitialized) return;
+        const panel = document.createElement('div');
+        panel.id = 'p-manager-panel';
+        panel.className = 'p-manager-ui-panel';
+        document.body.appendChild(panel);
+        const toggleButton = document.createElement('div');
         toggleButton.textContent = 'P';
-        toggleButton.classList.add('toggle-button');
+        toggleButton.className = 'p-manager-toggle-button';
         document.body.appendChild(toggleButton);
-    const createUI = () => {
-
-        const presetPanel = document.createElement('div');
-        presetPanel.id = 'preset-panel';
-        presetPanel.classList.add('ui-panel');
-        document.body.appendChild(presetPanel);
-
         toggleButton.addEventListener('click', () => {
-            if (presetPanel.style.display === 'none') {
-                presetPanel.style.display = 'block';
-                renderSlotSelectBoxes();
-                createSlotButtons(); // 버튼 생성 함수 호출
-                renderPresetPanel();
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'block';
+                renderPanel();
             } else {
-                presetPanel.style.display = 'none';
+                panel.style.display = 'none';
             }
         });
-
-        return presetPanel;
+        toggleImageMonitoring(presetData.settings.largeView);
+        isInitialized = true;
+        console.log("NovelAI Preset Manager v2.0.4 Initialized.");
     };
-// 오류방지를 위해 미러링된 ProseMirror 배제를 위해 / 2 필수
-    function getPromptAreas() {
-        const allProseMirrors = Array.from(document.querySelectorAll('.ProseMirror'));
-        const visibleCount = Math.floor(allProseMirrors.length / 2);
-        return allProseMirrors.slice(0, visibleCount);
-    }
 
-    function renderSlotSelectBoxes() {
-        const slotContainer = document.getElementById('slot-container');
-        if (!slotContainer) return;
-
-        slotContainer.innerHTML = '';
-
-        const promptAreas = getPromptAreas();
-
-        promptAreas.forEach((area, index) => {
-            const slotType = index === 0 ? '메인' : index === 1 ? 'UC' : `캐릭터${index-1}`;
-            const category = index === 0 ? 'main' : index === 1 ? 'UC' : 'character';
-            const storageKey = `selected_preset_${category}_${index}`;
-            // 로컬 스토리지에서 값을 가져올 때 nullish coalescing operator (??) 대신 || 사용
-            // "" (빈 문자열)의 경우에도 기본값으로 처리하기 위함
-            let selectedValue = localStorage.getItem(storageKey) || '';
-            let selectedTitle = '';
-
-            const selectDiv = document.createElement('div');
-            selectDiv.classList.add('preset-select-div');
-
-            const selectHeader = document.createElement('div');
-            selectHeader.classList.add('select-header');
-            selectHeader.textContent = selectedTitle || `${slotType} 프리셋 선택`;
-            selectDiv.appendChild(selectHeader);
-
-            const selectOptions = document.createElement('div');
-            selectOptions.classList.add('select-options');
-            selectDiv.appendChild(selectOptions);
-
-            // "비우기" 옵션 추가
-            const clearOption = document.createElement('div');
-            clearOption.classList.add('select-option');
-            clearOption.textContent = '비우기';
-            clearOption.dataset.value = '';
-            clearOption.addEventListener('click', (e) => {
-                const value = e.target.dataset.value;
-                selectHeader.textContent = `${slotType} 프리셋 선택`;
-                selectedValue = value;
-                localStorage.removeItem(storageKey); // 변경: removeItem으로 변경
-                applyPresetToSlot(index, ''); // 내용 비우기
-                selectOptions.classList.remove('show');
-                currentSelectOptions = null; // 닫을 때 currentSelectOptions 초기화
-            });
-            selectOptions.appendChild(clearOption);
-
-
-            presetData[category].forEach(preset => {
-                const option = document.createElement('div');
-                option.classList.add('select-option');
-                option.textContent = preset.title;
-                option.dataset.value = preset.content;
-                if (preset.content === selectedValue) {
-                    selectedTitle = preset.title;
-                    selectHeader.textContent = selectedTitle;
-                }
-                option.addEventListener('click', (e) => {
-                    const value = e.target.dataset.value;
-                    const title = e.target.textContent;
-                    selectHeader.textContent = title;
-                    selectedValue = value;
-                    localStorage.setItem(storageKey, value);
-                    applyPresetToSlot(index, value);
-                    selectOptions.classList.remove('show');
-                    currentSelectOptions = null; // 닫을 때 currentSelectOptions 초기화
-                });
-                selectOptions.appendChild(option);
-            });
-
-
-            selectHeader.addEventListener('click', (e) => {
-                e.stopPropagation(); // 이벤트 버블링 중지
-                if (currentSelectOptions && currentSelectOptions !== selectOptions) {
-                    currentSelectOptions.classList.remove('show');
-                }
-                selectOptions.classList.toggle('show');
-                currentSelectOptions = selectOptions.classList.contains('show') ? selectOptions : null;
-            });
-
-            slotContainer.appendChild(selectDiv);
-        });
-
-        // document click event listener to close select options
-        document.addEventListener('click', function(event) {
-            if (currentSelectOptions && !event.target.closest('.preset-select-div')) {
-                currentSelectOptions.classList.remove('show');
-                currentSelectOptions = null;
-            }
-        });
-    }
-
-
-    function createSlotButtons() {
-        const slotButtonsContainer = document.getElementById('slot-buttons-container');
-        if (!slotButtonsContainer) return;
-
-        slotButtonsContainer.innerHTML = ''; // 컨테이너 내부 초기화
-
-        const savePromptsButton = document.createElement('button');
-        savePromptsButton.textContent = '가져오기';
-        savePromptsButton.classList.add('preset-button');
-        savePromptsButton.style.marginRight = '5px';
-        savePromptsButton.addEventListener('click', () => saveCurrentSet('area'));
-        slotButtonsContainer.appendChild(savePromptsButton);
-
-        const saveSetButton = document.createElement('button');
-        saveSetButton.textContent = '⬇️ 에서 세트 저장';
-        saveSetButton.classList.add('preset-button');
-        saveSetButton.style.marginRight = '5px';
-        saveSetButton.addEventListener('click', () => saveCurrentSet('slot'));
-        slotButtonsContainer.appendChild(saveSetButton);
-    }
-
-
-    function createPromptInputDialog(dialogTitle, includesetFullTitle, promptContents = [], promptCountOverride = null, setPresetTitle = '') {
-        const saveDialog = document.createElement('div');
-        saveDialog.classList.add('dialog');
-
-        let dialogContent = `<h3>${dialogTitle}</h3>`;
-        dialogContent += `<hr style="margin: 8px 0; border: none; border-top: 1px solid #888;">`;
-
-        if (includesetFullTitle) {
-            dialogContent += `
-                <div style="margin-bottom: 12px;">
-                    <label for="final-preset-title" style="display: block; margin-bottom: 3px;">프리셋 세트 제목:</label>
-                    <input type="text" id="final-preset-title" placeholder="세트 이름 입력시에만 추가됨" class="preset-input" value="${setPresetTitle}">
-                </div>
-                <div style="text-align: right; margin-bottom: 10px;">
-                    <button id="save-prompts-confirm-top" class="preset-button">저장</button>
-                </div>
-            `;
-        }
-
-        // 입력 창 갯수 결정: 명시된 갯수 > promptContents 길이 > 현재 프롬프트 영역 갯수 순
-        const promptAreas = getPromptAreas();
-        const numPromptInputs = promptCountOverride !== null ? promptCountOverride : Math.max(promptContents.length, promptAreas.length);
-
-
-        for (let i = 0; i < numPromptInputs; i++) {
-            const slotType = i === 0 ? '메인' : i === 1 ? 'UC' : '캐릭터';
-            const category = i === 0 ? 'main' : i === 1 ? 'UC' : 'character';
-            dialogContent += `
-                <div style="margin-bottom: 15px;">
-                    <div style="margin-bottom: 3px; font-weight: bold;">${slotType} 프롬프트 ${i > 1 ? i-1 : ''}</div>
-                    <input type="text" id="preset-title-${i}" placeholder="제목 입력시 개별 프리셋에도 추가 (선택 사항)" class="preset-input" style="margin-bottom: 6px;">
-                    <textarea id="preset-content-${i}" class="preset-textarea">${promptContents[i] || ''}</textarea>
-                    <input type="hidden" id="preset-category-${i}" value="${category}">
-                </div>
-            `;
-        }
-
-
-        dialogContent += `
-            <div style="text-align: right; margin-top: 15px;">
-                <button id="save-prompts-cancel" class="preset-button">취소</button>
-                ${includesetFullTitle ? '<button id="save-prompts-confirm-bottom" class="preset-button">저장</button>' : ''}
-            </div>
-        `;
-
-        saveDialog.innerHTML = dialogContent;
-
-        return saveDialog;
-    }
-
-
-function saveCurrentSet(inputType) {
-    if (currentContentDialog) {
-        document.body.removeChild(currentContentDialog);
-        currentContentDialog = null;
-    }
-
-    let initialPromptContents = [];
-    if (inputType === 'slot') {
-        const slotContainer = document.getElementById('slot-container');
-        if (!slotContainer) return;
-        const selectBoxes = Array.from(slotContainer.querySelectorAll('.preset-select-div .select-header'));
-        const promptAreas = getPromptAreas(); // getPromptAreas() 호출
-
-        initialPromptContents = selectBoxes.map((selectBox, index) => { // index 추가
-            // 변경된 부분: promptAreas에서 해당 index의 요소의 textContent 사용
-            return promptAreas[index] ? promptAreas[index].textContent : '';
-        });
-    } else if (inputType === 'area') {
-        const promptAreas = getPromptAreas();
-        initialPromptContents = promptAreas.map(area => area.textContent);
-    }
-
-
-
-        const saveDialog = createPromptInputDialog('프리셋 세트 저장', true, initialPromptContents);
-        document.body.appendChild(saveDialog);
-        currentContentDialog = saveDialog;
-
-        const saveAction = () => {
-            const setFullPresetTitle = document.getElementById('final-preset-title').value;
-            const finalPrompts = [];
-            let hasSetTitle = false;
-            let hasIndividualTitle = false;
-
-            if (setFullPresetTitle.trim() !== '') {
-                hasSetTitle = true;
-            }
-
-            const promptAreas = getPromptAreas();
-            for (let i = 0; i < promptAreas.length; i++) {
-                const titleInput = document.getElementById(`preset-title-${i}`);
-                const title = titleInput.value.trim();
-                const category = document.getElementById(`preset-category-${i}`).value;
-                const contentArea = document.getElementById(`preset-content-${i}`);
-                const content = contentArea.value.trim();
-
-                if (title !== '' && content !== '') {
-                    if (category === 'main') {
-                        presetData.main.push({title: title, content: content});
-                    } else if (category === 'UC') {
-                        presetData.UC.push({title: title, content: content});
-                    } else if (category === 'character') {
-                        presetData.character.push({title: title, content: content});
-                    }
-                    hasIndividualTitle = true;
-                }
-                finalPrompts.push(content);
-            }
-
-
-            if (hasSetTitle) { // 세트 제목이 있는 경우에만 저장
-                presetData.fullSetPresets.push({
-                    title: setFullPresetTitle,
-                    prompts: finalPrompts
-                });
-            }
-
-            if (hasSetTitle || hasIndividualTitle) {
-                saveData();
-                refreshUI(); // UI 전체 갱신
-                showCategoryPresets(activeCategoryTab); // 수정: 현재 활성 탭 유지
-            }
-
-            document.body.removeChild(saveDialog);
-            currentContentDialog = null;
-        };
-
-
-        document.getElementById('save-prompts-cancel').addEventListener('click', () => {
-            document.body.removeChild(saveDialog);
-            currentContentDialog = null;
-        });
-        document.getElementById('save-prompts-confirm-top').addEventListener('click', saveAction);
-        document.getElementById('save-prompts-confirm-bottom').addEventListener('click', saveAction);
-
-    }
-
-    function getSlotTypeByIndex(index) {
-        return index === 0 ? '메인' : index === 1 ? 'UC' : `캐릭터${index - 1}`;
-    }
-
-
-    function applyPresetToSlot(slotIndex, content) {
-        if (!content === undefined) return;
-
-        const promptAreas = getPromptAreas();
-        if (slotIndex >= promptAreas.length) return;
-
-        const targetArea = promptAreas[slotIndex];
-
-        while (targetArea.firstChild) {
-            targetArea.removeChild(targetArea.firstChild);
-        }
-
-        if (content) {
-            const textNode = document.createTextNode(content);
-            targetArea.appendChild(textNode);
-        }
-
-
-        const inputEvent = new Event('input', { bubbles: true });
-        targetArea.dispatchEvent(inputEvent);
-    }
-
-    function applysetFullPreset(presetIndex) {
-        const preset = presetData.fullSetPresets[presetIndex];
-        const promptAreas = getPromptAreas();
-
-        for (let i = 0; i < Math.min(promptAreas.length, preset.prompts.length); i++) {
-            if (preset.prompts[i]) {
-                while (promptAreas[i].firstChild) {
-                    promptAreas[i].removeChild(promptAreas[i].firstChild);
-                }
-
-                const textNode = document.createTextNode(preset.prompts[i]);
-                promptAreas[i].appendChild(textNode);
-
-                const inputEvent = new Event('input', { bubbles: true });
-                promptAreas[i].dispatchEvent(inputEvent);
-            } else {
-                while (promptAreas[i].firstChild) {
-                    promptAreas[i].removeChild(promptAreas[i].firstChild);
-                }
-                const inputEvent = new Event('input', { bubbles: true });
-                promptAreas[i].dispatchEvent(inputEvent);
-            }
-        }
-
-        for (let i = preset.prompts.length; i < promptAreas.length; i++) {
-            while (promptAreas[i].firstChild) {
-                promptAreas[i].removeChild(promptAreas[i].firstChild);
-            }
-
-            const inputEvent = new Event('input', { bubbles: true });
-            promptAreas[i].dispatchEvent(inputEvent);
-        }
-    }
-
-    // 프리셋 삭제
-    function deletePreset(type, index) {
-        if (confirm('정말로 삭제하시겠습니까?')) {
-            const deletedPreset = presetData[type][index]; // 삭제될 프리셋 정보 저장
-            presetData[type].splice(index, 1);
-            saveData();
-
-            // 삭제된 프리셋과 연결된 슬롯 정보 초기화
-            const promptAreas = getPromptAreas();
-            promptAreas.forEach((_, slotIndex) => {
-                const category = slotIndex === 0 ? 'main' : slotIndex === 1 ? 'UC' : 'character';
-                const storageKey = `selected_preset_${category}_${slotIndex}`;
-                const selectedValue = localStorage.getItem(storageKey);
-                if (selectedValue === deletedPreset.content) { // 슬롯이 삭제된 프리셋을 사용하고 있었다면
-                    localStorage.removeItem(storageKey); // 슬롯의 선택 정보 초기화
-                }
-            });
-
-
-            if (type === 'fullSetPresets') {
-                if (currentContentDialog) { // 수정 창이 열려 있다면
-                    document.body.removeChild(currentContentDialog); // 수정 창 닫기
-                    currentContentDialog = null; // currentContentDialog 변수 초기화
-                }
-                refreshUI();
-            } else {
-                showCategoryPresets(activeCategoryTab);
-                refreshUI();
-            }
-        }
-    }
-
-    function renderPresetPanel() {
-        const panel = document.getElementById('preset-panel');
-        if (!panel) return;
-
-        panel.innerHTML = '';
-
-        // 이미지 링크 설정 컨테이너
-        const imageLinkContainer = document.createElement('div');
-        imageLinkContainer.style.cssText = 'margin-bottom: 10px; display: flex; align-items: center;';
-
-        // 토글 스위치 input (체크박스)
-        const imageLinkCheckbox = document.createElement('input');
-        imageLinkCheckbox.type = 'checkbox';
-        imageLinkCheckbox.id = 'image-link-feature';
-        imageLinkCheckbox.checked = getLocalStorage('image_link_enabled', false);
-
-        // 토글 스위치 슬라이더 (div)
-        const imageLinkSlider = document.createElement('span');
-        imageLinkSlider.classList.add('toggle-slider');
-
-        // 토글 스위치 label (div) - 체크박스 + 슬라이더 래핑
-        const imageLinkSwitch = document.createElement('label');
-        imageLinkSwitch.classList.add('toggle-switch');
-        imageLinkSwitch.appendChild(imageLinkCheckbox);
-        imageLinkSwitch.appendChild(imageLinkSlider);
-
-        // 텍스트 라벨
-        const imageLinkLabel = document.createElement('label');
-        imageLinkLabel.htmlFor = 'image-link-feature';
-        imageLinkLabel.textContent = '크게 보기 패널';
-
-        imageLinkContainer.appendChild(imageLinkSwitch); // 스위치 추가
-        imageLinkContainer.appendChild(imageLinkLabel); // 텍스트 라벨 추가
-        panel.appendChild(imageLinkContainer);
-
-        // 이벤트 리스너: 스위치 클릭 시 이미지 모니터링 토글
-        imageLinkSwitch.addEventListener('click', () => {
-            imageLinkCheckbox.checked = !imageLinkCheckbox.checked; // 체크박스 상태 토글
-            toggleImageMonitoring(imageLinkCheckbox.checked);
-            localStorage.setItem('image_link_enabled', imageLinkCheckbox.checked);
-        });
-
-
-        // 버튼 컨테이너 추가
-        const slotButtonsContainer = document.createElement('div');
-        slotButtonsContainer.id = 'slot-buttons-container';
-        slotButtonsContainer.style.cssText = 'margin-bottom: 10px;';
-        panel.appendChild(slotButtonsContainer);
-        createSlotButtons(); // 버튼 생성 함수 호출
-
-
-        const slotContainer = document.createElement('div');
-        slotContainer.id = 'slot-container';
-        slotContainer.style.cssText = 'margin-bottom: 20px; border-bottom: 1px solid #666; padding-bottom: 10px;';
-        panel.appendChild(slotContainer);
-
-        renderSlotSelectBoxes();
-
-
-        const fullSetPresetsContainer = document.createElement('div');
-        fullSetPresetsContainer.style.cssText = 'margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 10px;';
-const fullSetPresetsTitle = document.createElement('div');
-fullSetPresetsTitle.textContent = '프리셋 세트';
-fullSetPresetsTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; font-size: 1.1em;';
-fullSetPresetsContainer.appendChild(fullSetPresetsTitle);
-const fullSetPresetsGrid = document.createElement('div');
-fullSetPresetsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 2px;';
-let timer;
-let isLongPress = false;
-presetData.fullSetPresets.forEach((preset, index) => {
-    const presetContainer = document.createElement('div');
-    presetContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 1px;';
-    const presetButton = document.createElement('button');
-    presetButton.textContent = preset.title;
-    presetButton.classList.add('preset-button');
-    presetButton.style.cssText += 'flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; padding: 6px; font-size: 0.9em;';
-    
-    // 클릭 이벤트
-    presetButton.addEventListener('click', () => {
-        if (isLongPress) {
-            isLongPress = false;
-            return;
-        }
-        applysetFullPreset(index);
-    });
-    
-    // 마우스 이벤트 (PC)
-    presetButton.addEventListener('mousedown', () => {
-        isLongPress = false;
-        timer = setTimeout(() => {
-            isLongPress = true;
-            showPresetContent(preset, index, true);
-        }, 500);
-    });
-    presetButton.addEventListener('mouseup', () => {
-        clearTimeout(timer);
-    });
-    presetButton.addEventListener('mouseleave', () => {
-        clearTimeout(timer);
-    });
-    
-    // 터치 이벤트 (모바일)
-    presetButton.addEventListener('touchstart', (e) => {
-        isLongPress = false;
-        timer = setTimeout(() => {
-            isLongPress = true;
-            showPresetContent(preset, index, true);
-        }, 500);
-        // 기본 컨텍스트 메뉴 방지
-        e.preventDefault();
-    });
-    presetButton.addEventListener('touchend', () => {
-        if (!isLongPress) {
-            clearTimeout(timer);
+    const observer = new MutationObserver((mutations, obs) => {
+        if (document.querySelector('.ProseMirror')) {
+            init();
+            obs.disconnect();
         }
     });
-    presetButton.addEventListener('touchcancel', () => {
-        clearTimeout(timer);
-        isLongPress = false;
-    });
-    presetButton.addEventListener('touchmove', (e) => {
-        // 터치 움직임이 있으면 롱프레스 취소
-        clearTimeout(timer);
-        isLongPress = false;
-    });
-    
-    presetContainer.appendChild(presetButton);
-    fullSetPresetsGrid.appendChild(presetContainer);
-});
 
-        fullSetPresetsContainer.appendChild(fullSetPresetsGrid);
-        panel.appendChild(fullSetPresetsContainer);
-
-        const addPresetButton = document.createElement('button');
-        addPresetButton.textContent = '새 프롬프트 추가';
-        addPresetButton.classList.add('preset-button');
-        addPresetButton.style.cssText += 'margin-bottom: 10px; width: 100%; padding: 8px; font-size: 0.9em;';
-        addPresetButton.addEventListener('click', showAddPresetDialog);
-        panel.appendChild(addPresetButton);
-
-        const tabsContainer = document.createElement('div');
-        tabsContainer.style.cssText = 'display: flex; margin-bottom: 15px; border-bottom: 1px solid #666;';
-
-        ['main', 'UC', 'character'].forEach(category => {
-            const tab = document.createElement('button');
-            tab.textContent = category === 'main' ? '메인' : category === 'UC' ? 'UC' : '캐릭터';
-            tab.classList.add('preset-button', 'category-tab-button'); // category-tab-button 클래스 추가
-            if (category === activeCategoryTab) {
-                tab.classList.add('active'); // 활성 탭 스타일 적용
-            }
-            tab.dataset.category = category;
-            tab.addEventListener('click', (e) => {
-                activeCategoryTab = e.target.dataset.category;
-                updateActiveTabHighlight(tabsContainer, activeCategoryTab); // 탭 하이라이트 업데이트
-                showCategoryPresets(activeCategoryTab);
-            });
-            tabsContainer.appendChild(tab);
-        });
-
-        panel.appendChild(tabsContainer);
-
-        const categoryPresetsContainer = document.createElement('div');
-        categoryPresetsContainer.id = 'category-presets-container';
-        // categoryPresetsContainer.style.cssText = 'max-height: 200px; overflow-y: auto;'; // 스크롤 제거
-        panel.appendChild(categoryPresetsContainer);
-
-        showCategoryPresets(activeCategoryTab);
-    }
-
-    // 탭 하이라이트 업데이트 함수
-    function updateActiveTabHighlight(tabsContainer, activeCategory) {
-        tabsContainer.querySelectorAll('.category-tab-button').forEach(tab => {
-            if (tab.dataset.category === activeCategory) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
-    }
-
-
-    function showCategoryPresets(category) {
-        const container = document.getElementById('category-presets-container');
-        if (!container) return;
-
-        container.innerHTML = '';
-        activeCategoryTab = category;
-
-        const tabsContainer = document.querySelector('#preset-panel > div:nth-child(9)'); // 탭 컨테이너 선택자 수정
-        if (tabsContainer) {
-            updateActiveTabHighlight(tabsContainer, activeCategoryTab);
-        }
-
-
-        presetData[category].forEach((preset, index) => {
-            const presetContainer = document.createElement('div');
-            presetContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 6px;';
-
-            const presetTitle = document.createElement('div');
-            presetTitle.textContent = preset.title;
-            presetTitle.style.cssText = 'flex-grow: 1; cursor: pointer; padding: 6px; border-radius: 0px; overflow: hidden; text-overflow: ellipsis; font-size: 0.9em;';
-            presetTitle.addEventListener('click', () => {
-                editPreset(category, index);
-            });
-
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'X';
-            deleteButton.classList.add('preset-button', 'delete-button');
-            deleteButton.style.marginLeft = '5px';
-            deleteButton.addEventListener('click', () => {
-                deletePreset(category, index);
-            });
-
-            presetContainer.appendChild(presetTitle);
-            presetContainer.appendChild(deleteButton);
-            container.appendChild(presetContainer);
-        });
-    }
-
-    function showAddPresetDialog() {
-        if (currentContentDialog) {
-            document.body.removeChild(currentContentDialog);
-            currentContentDialog = null;
-        }
-        const dialog = document.createElement('div');
-        dialog.classList.add('dialog');
-        dialog.innerHTML = `
-            <h3>새 프롬프트 추가</h3>
-            <hr style="margin: 8px 0; border: none; border-top: 1px solid #888;">
-            <div style="margin-bottom: 12px;">
-                <label style="display: block; margin-bottom: 3px;">카테고리:</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="dialog-tab-button ${activeDialogCategoryTab === 'main' ? 'active' : ''}" data-category="main">메인</button>
-                    <button class="dialog-tab-button ${activeDialogCategoryTab === 'UC' ? 'active' : ''}" data-category="UC">UC</button>
-                    <button class="dialog-tab-button ${activeDialogCategoryTab === 'character' ? 'active' : ''}" data-category="character">캐릭터</button>
-                </div>
-            </div>
-            <div style="margin-bottom: 12px;">
-                <label for="new-preset-title" style="display: block; margin-bottom: 3px;">제목:</label>
-                <input type="text" id="new-preset-title" class="preset-input">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label for="new-preset-content" style="display: block; margin-bottom: 3px;">내용:</label>
-                <textarea id="new-preset-content" class="preset-textarea"></textarea>
-            </div>
-            <div style="text-align: right; margin-top: 15px;">
-                <button id="add-preset-cancel" class="preset-button">취소</button>
-                <button id="add-preset-confirm" class="preset-button">저장</button>
-            </div>
-        `;
-
-        document.body.appendChild(dialog);
-        currentContentDialog = dialog;
-
-        // dialog 탭 버튼 이벤트
-        dialog.querySelectorAll('.dialog-tab-button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                activeDialogCategoryTab = e.target.dataset.category;
-                dialog.querySelectorAll('.dialog-tab-button').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-            });
-        });
-
-
-        document.getElementById('add-preset-cancel').addEventListener('click', () => {
-            document.body.removeChild(dialog);
-            currentContentDialog = null;
-        });
-
-        document.getElementById('add-preset-confirm').addEventListener('click', () => {
-            const category = activeDialogCategoryTab;
-            const title = document.getElementById('new-preset-title').value;
-            const content = document.getElementById('new-preset-content').value;
-
-            if (!title || !content) return;
-
-            presetData[category].push({
-                title: title,
-                content: content
-            });
-
-            saveData();
-            document.body.removeChild(dialog);
-            currentContentDialog = null;
-            showCategoryPresets(category); // 해당 카테고리 프리셋 목록 갱신
-            refreshUI(); // UI 전체 갱신
-        });
-    }
-
-    function editPreset(category, index) {
-        if (currentContentDialog) {
-            document.body.removeChild(currentContentDialog);
-            currentContentDialog = null;
-        }
-        const preset = presetData[category][index];
-
-        const dialog = document.createElement('div');
-        dialog.classList.add('dialog');
-
-        dialog.innerHTML = `
-            <h3>프리셋 수정</h3>
-            <hr style="margin: 8px 0; border: none; border-top: 1px solid #888;">
-            <div style="margin-bottom: 12px;">
-                <label for="edit-preset-title" style="display: block; margin-bottom: 3px;">제목:</label>
-                <input type="text" id="edit-preset-title" class="preset-input" value="${preset.title}">
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label for="edit-preset-content" style="display: block; margin-bottom: 3px;">내용:</label>
-                <textarea id="edit-preset-content" class="preset-textarea">${preset.content}</textarea>
-            </div>
-            <div style="text-align: right; margin-top: 15px;">
-                <button id="edit-preset-cancel" class="preset-button">취소</button>
-                <button id="edit-preset-confirm" class="preset-button">저장</button>
-            </div>
-        `;
-
-        document.body.appendChild(dialog);
-        currentContentDialog = dialog;
-
-
-        document.getElementById('edit-preset-cancel').addEventListener('click', () => {
-            document.body.removeChild(dialog);
-            currentContentDialog = null;
-        });
-
-        document.getElementById('edit-preset-confirm').addEventListener('click', () => {
-            const title = document.getElementById('edit-preset-title').value;
-            const content = document.getElementById('edit-preset-content').value;
-
-            if (!title || !content) return;
-
-            presetData[category][index] = {
-                title: title,
-                content: content
-            };
-
-            saveData();
-            document.body.removeChild(dialog);
-            currentContentDialog = null;
-            showCategoryPresets(category); // 해당 카테고리 프리셋 목록 갱신
-            refreshUI(); // UI 전체 갱신
-        });
-    }
-
-    function showPresetContent(preset, setFullPresetIndex = -1, editMode = false) {
-        if (currentContentDialog) {
-            document.body.removeChild(currentContentDialog);
-            currentContentDialog = null;
-        }
-
-        const dialogTitle = editMode ? '프리셋 세트 수정' : preset.title;
-        const includesetFullTitle = editMode;
-        const promptAreasForDialog = editMode ? preset.prompts : [];
-        // 수정 시에는 저장된 프리셋 갯수를 기준으로 입력창 생성
-        const promptCountOverride = editMode ? preset.prompts.length : null;
-        const dialog = createPromptInputDialog(dialogTitle, includesetFullTitle, promptAreasForDialog, promptCountOverride, editMode ? preset.title : '');
-
-        if (!editMode) {
-            const titleInputLabel = dialog.querySelector('label[for="final-preset-title"]');
-            const titleInput = dialog.querySelector('#final-preset-title');
-            if (titleInputLabel) titleInputLabel.style.display = 'none';
-            if (titleInput) titleInput.style.display = 'none';
-
-            const confirmTopButton = dialog.querySelector('#save-prompts-confirm-top');
-            if (confirmTopButton) confirmTopButton.style.display = 'none';
-
-            const cancelButton = dialog.querySelector('#save-prompts-cancel');
-            cancelButton.textContent = '닫기';
-        } else { // 수정 모드일 때 '세트 삭제' 버튼 추가
-            const confirmButtonTop = dialog.querySelector('#save-prompts-confirm-top');
-            const cancelButton = dialog.querySelector('#save-prompts-cancel');
-            const buttonArea = confirmButtonTop.parentNode;
-
-            const deleteSetButton = document.createElement('button');
-            deleteSetButton.id = 'delete-set-button';
-            deleteSetButton.textContent = '세트 삭제';
-            deleteSetButton.classList.add('preset-button');
-            deleteSetButton.style.marginRight = '5px'; // 저장 버튼과의 간격 조정
-            buttonArea.insertBefore(deleteSetButton, confirmButtonTop); // '저장' 버튼 앞에 삽입
-
-            deleteSetButton.addEventListener('click', () => {
-                deletePreset('fullSetPresets', setFullPresetIndex); // setFullPresetIndex를 사용하여 삭제
-            });
-        }
-
-
-        document.body.appendChild(dialog);
-        currentContentDialog = dialog;
-
-
-        const saveAction = () => {
-            const newTitle = document.getElementById('final-preset-title').value;
-            const newPrompts = [];
-            let hasIndividualTitle = false; // 개별 프리셋 제목 유무 확인 변수
-
-            for (let i = 0; i < preset.prompts.length; i++) { // 저장된 프리셋 갯수만큼 순회
-                const titleInput = document.getElementById(`preset-title-${i}`); // 제목 input 요소 가져오기
-                const title = titleInput.value.trim(); // 제목 값 가져오기
-                const content = document.getElementById(`preset-content-${i}`).value;
-                 const category = document.getElementById(`preset-category-${i}`).value; // category 값 가져오기
-
-
-                if (title !== '' && content !== '') { // 개별 제목이 있을 때만 개별 프리셋 저장
-                    if (category === 'main') {
-                        presetData.main.push({title: title, content: content});
-                    } else if (category === 'UC') {
-                        presetData.UC.push({title: title, content: content});
-                    } else if (category === 'character') {
-                        presetData.character.push({title: title, content: content});
-                    }
-                    hasIndividualTitle = true; // 개별 제목이 하나라도 있으면 true로 설정
-                }
-                newPrompts.push(content);
-            }
-
-            presetData.fullSetPresets[setFullPresetIndex] = {
-                title: newTitle || preset.title,
-                prompts: newPrompts
-            };
-            saveData();
-            refreshUI(); // UI 전체 갱신
-            showCategoryPresets(activeCategoryTab); // 현재 탭 유지
-            document.body.removeChild(dialog); // 수정 완료 후 다이얼로그 닫기
-            currentContentDialog = null; // currentContentDialog 변수 초기화
-        };
-
-
-        const confirmButtonBottom = dialog.querySelector('#save-prompts-confirm-bottom');
-        if (confirmButtonBottom) {
-            confirmButtonBottom.addEventListener('click', saveAction);
-        }
-        const confirmButtonTop = dialog.querySelector('#save-prompts-confirm-top');
-         if (confirmButtonTop) {
-            confirmButtonTop.addEventListener('click', saveAction);
-        }
-
-
-        const cancelButton = dialog.querySelector('#save-prompts-cancel');
-        if (cancelButton) {
-            cancelButton.addEventListener('click', () => {
-                document.body.removeChild(dialog);
-                currentContentDialog = null;
-            });
-        }
-
-    }
-
-
-    function init() {
-        const panel = createUI();
-
-        // 버튼 컨테이너 초기 생성 및 추가
-        const slotButtonsContainer = document.createElement('div');
-        slotButtonsContainer.id = 'slot-buttons-container';
-        panel.insertBefore(slotButtonsContainer, panel.firstChild); // slot-container 앞에 버튼 컨테이너 삽입
-        createSlotButtons(); // 버튼 생성
-
-        renderPresetPanel();
-
-         const proseMirrorObserver = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.addedNodes.length || mutation.removedNodes.length) {
-                    for (let i = 0; i < mutation.addedNodes.length; i++) {
-                        const node = mutation.addedNodes[i];
-                        if (node.classList && node.classList.contains('ProseMirror')) {
-                            renderSlotSelectBoxes();
-                            return;
-                        }
-                    }
-
-                    for (let i = 0; i < mutation.removedNodes.length; i++) {
-                        const node = mutation.removedNodes[i];
-                        if (node.classList && node.classList.contains('ProseMirror')) {
-                            renderSlotSelectBoxes();
-                            return;
-                        }
-                    }
-                }
-            });
-        });
-
-        proseMirrorObserver.observe(document.body, { childList: true, subtree: true });
-
-
-    }
-
-    // DOMContentLoaded 이벤트 리스너 등록
-    window.addEventListener('DOMContentLoaded', () => {
-        init();
-
-        // 초기 로딩 시 이미지 모니터링 설정 (필요한 경우)
-        const imageLinkEnabled = getLocalStorage('image_link_enabled', false);
-        toggleImageMonitoring(imageLinkEnabled);
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
     });
 
 })();
