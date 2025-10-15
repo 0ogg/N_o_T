@@ -44,7 +44,7 @@
         input:checked + .p-manager-toggle-slider { background-color: var(--highlight-color, royalblue); }
         input:checked + .p-manager-toggle-slider:before { transform: translateX(20px); }
         #image-mirror-panel { position: fixed; top: 0; right: 0; width: 1300px; height: 100vh; background: rgba(0, 0, 0, 0.85); z-index: 9999; overflow-y: auto; overflow-x: hidden; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5); transition: transform 0.3s ease; }
-        #image-mirror-panel.hidden { transform: translateX(1000px); }
+        #image-mirror-panel.hidden { transform: translateX(100%); }
         #image-mirror-panel img { display: block; max-width: 100%; height: auto; cursor: pointer; }
     `;
     document.head.appendChild(style);
