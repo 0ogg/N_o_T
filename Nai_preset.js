@@ -717,7 +717,7 @@
         settingsButton.className = 'p-manager-button';
         settingsButton.addEventListener('click', showSettingsDialog);
         const saveCurrentButton = document.createElement('button');
-        saveCurrentButton.textContent = '현재 저장';
+        saveCurrentButton.textContent = '가져오기';
         saveCurrentButton.className = 'p-manager-button';
         saveCurrentButton.addEventListener('click', showSaveCurrentDialog);
         controlContainer.appendChild(largeViewSwitchContainer);
