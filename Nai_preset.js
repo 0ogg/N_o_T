@@ -15,16 +15,23 @@
     // =================================================================================
     const style = document.createElement('style');
     style.innerHTML = `
-        :root { --panel-background-color: white; }
-        .p-manager-button { border: none; padding: 4px 8px; margin: 1px; border-radius: 0px; cursor: pointer; font-size: 0.9em; transition: background-color 0.3s ease; background-color: #f0f0f0; }
-        .p-manager-button:hover { background-color: #e0e0e0; }
-        .p-manager-input { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #888; border-radius: 0px; }
-        .p-manager-textarea { width: 100%; box-sizing: border-box; height: 100px; overflow-y: auto; border: 1px solid #888; border-radius: 0px; padding: 6px; font-family: monospace; font-size: 0.9em; }
-        .p-manager-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #666; padding: 20px; z-index: 10000; max-width: 500px; min-width: 350px; max-height: 80%; overflow-y: auto; border-radius: 0px; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-family: sans-serif; background-color: var(--panel-background-color); }
+        /* ★★★ QR 스크립트처럼 :root에서 tMainColor를 참조하도록 수정 ★★★ */
+        :root {
+            --panel-background-color: ${localStorage.getItem('tMainColor') || 'white'};
+        }
+        /* ★★★ 모든 background-color 속성 제거 및 CSS 변수 적용 ★★★ */
+        .p-manager-button { border: none; padding: 4px 8px; margin: 1px; border-radius: 0px; cursor: pointer; font-size: 0.9em; transition: background-color 0.3s ease; }
+        /* .p-manager-button:hover 스타일은 상속받은 스타일을 따르므로 제거하거나 투명도 조절로 변경 가능. 일단 제거. */
+        .p-manager-input, .p-manager-textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #888; border-radius: 0px; background: transparent; }
+        .p-manager-dialog, .p-manager-ui-panel, .p-manager-toggle-button {
+            background-color: var(--panel-background-color);
+        }
+        .p-manager-button { color: var(--highlight-color, royalblue); }
+        .p-manager-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid #666; padding: 20px; z-index: 10000; max-width: 500px; min-width: 350px; max-height: 80%; overflow-y: auto; border-radius: 0px; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-family: sans-serif; }
         .p-manager-dialog-section { margin-bottom: 15px; }
         .p-manager-dialog-label { display: block; margin-bottom: 3px; font-weight: bold; }
-        .p-manager-ui-panel { position: fixed; top: 0px; right: 0px; width: 300px; height: 100vh; overflow-y: auto; border-left: 1px solid #666; padding: 15px; display: none; z-index: 9998; font-family: sans-serif; box-shadow: -3px 0px 10px rgba(0,0,0,0.3); background-color: var(--panel-background-color); box-sizing: border-box; }
-        .p-manager-toggle-button { position: fixed; bottom: 10px; right: 10px; width: 50px; height: 50px; border: 1px solid #666; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; border-radius: 10%; font-size: 1.2em; backdrop-filter: blur(5px); background-color: var(--panel-background-color); }
+        .p-manager-ui-panel { position: fixed; top: 0px; right: 0px; width: 300px; height: 100vh; overflow-y: auto; border-left: 1px solid #666; padding: 15px; display: none; z-index: 9998; font-family: sans-serif; box-shadow: -3px 0px 10px rgba(0,0,0,0.3); box-sizing: border-box; }
+        .p-manager-toggle-button { position: fixed; bottom: 10px; right: 10px; width: 50px; height: 50px; border: 1px solid #666; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; border-radius: 10%; font-size: 1.2em; backdrop-filter: blur(5px); }
         .p-manager-section { border-bottom: 1px solid #ccc; margin-bottom: 15px; padding-bottom: 10px; }
         .p-manager-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .p-manager-section-title { font-weight: bold; font-size: 1.1em; }
@@ -34,32 +41,11 @@
         .p-manager-toggle-switch input[type="checkbox"] { display: none; }
         .p-manager-toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
         .p-manager-toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .p-manager-toggle-slider { background-color: #2196F3; }
+        input:checked + .p-manager-toggle-slider { background-color: var(--highlight-color, royalblue); }
         input:checked + .p-manager-toggle-slider:before { transform: translateX(20px); }
-
-        /* ★★★ '크게 보기' CSS 원본 방식으로 복원 ★★★ */
-        #image-mirror-panel {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 1000px;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 9999;
-            overflow-y: auto;
-            overflow-x: hidden;
-            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease;
-        }
-        #image-mirror-panel.hidden {
-            transform: translateX(1000px);
-        }
-        #image-mirror-panel img {
-            display: block;
-            max-width: 100%;
-            height: auto;
-            cursor: pointer;
-        }
+        #image-mirror-panel { position: fixed; top: 0; right: 0; width: 1300px; height: 100vh; background: rgba(0, 0, 0, 0.85); z-index: 9999; overflow-y: auto; overflow-x: hidden; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5); transition: transform 0.3s ease; }
+        #image-mirror-panel.hidden { transform: translateX(1000px); }
+        #image-mirror-panel img { display: block; max-width: 100%; height: auto; cursor: pointer; }
     `;
     document.head.appendChild(style);
 
@@ -94,6 +80,20 @@
         localStorage.setItem('p_manager_settings', JSON.stringify(presetData.settings));
     };
 
+  // =================================================================================
+    // ★★★ 2. 여기에 색상 추출 함수 추가 ★★★
+    // =================================================================================
+    const extractAndApplyThemeColor = () => {
+        const colorSourceElement = document.querySelector('body:nth-child(2) > div:nth-child(2) > div:nth-child(2) > div:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1)');
+        if (colorSourceElement) {
+            const mainColor = window.getComputedStyle(colorSourceElement).backgroundColor;
+            if (mainColor) {
+                document.documentElement.style.setProperty('--panel-background-color', mainColor);
+                // QR 스크립트와 호환을 위해 tMainColor에 저장
+                localStorage.setItem('tMainColor', mainColor);
+            }
+        }
+    };
     // =================================================================================
     // DOM 및 NovelAI 인터페이스 제어
     // =================================================================================
@@ -859,21 +859,27 @@
         panel.id = 'p-manager-panel';
         panel.className = 'p-manager-ui-panel';
         document.body.appendChild(panel);
+
         const toggleButton = document.createElement('div');
         toggleButton.textContent = 'P';
         toggleButton.className = 'p-manager-toggle-button';
         document.body.appendChild(toggleButton);
+
+        // ★★★ 3. P 버튼 클릭 이벤트 수정 ★★★
         toggleButton.addEventListener('click', () => {
             if (panel.style.display === 'none' || panel.style.display === '') {
+                // 패널을 열 때마다 색상 추출 및 적용
+                extractAndApplyThemeColor();
                 panel.style.display = 'block';
                 renderPanel();
             } else {
                 panel.style.display = 'none';
             }
         });
+
         toggleImageMonitoring(presetData.settings.largeView);
         isInitialized = true;
-        console.log("NovelAI Preset Manager v2.0.4 Initialized.");
+        console.log("NovelAI Preset Manager Initialized.");
     };
 
     const observer = new MutationObserver((mutations, obs) => {
