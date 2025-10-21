@@ -3137,6 +3137,7 @@ getDefaultAiPresetsData: function() {
     width: 350px;
     max-width: 95%;
     background: var(--main-color);
+	backdrop-filter: blur(20px);
     height: 100%;
     bottom: 0px;
     right: 0px;
