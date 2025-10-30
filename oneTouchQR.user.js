@@ -6619,8 +6619,10 @@ h1, h2, h3 {
 
             if (!imageFile) throw new Error('ZIP 파일 내에서 PNG 이미지를 찾을 수 없습니다.');
 
-            const imageBlob = await imageFile.async('blob');
-            const imageUrl = URL.createObjectURL(imageBlob);
+            // [변경점] blob 대신 base64로 이미지 데이터를 추출합니다.
+            const imageBase64 = await imageFile.async('base64');
+            // [변경점] Data URL 형식으로 만듭니다.
+            const imageUrl = `data:image/png;base64,${imageBase64}`;
 
             const title = document.querySelector('[aria-label="Story Title"]')?.value || 'story';
             const dateTime = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
@@ -6725,7 +6727,6 @@ h1, h2, h3 {
              */
             cleanup: function() {
                 if (this.currentBlobUrl) {
-                    URL.revokeObjectURL(this.currentBlobUrl);
                     this.currentBlobUrl = null;
                 }
                 const contentWrapper = document.getElementById('image-panel-content-wrapper');
@@ -6852,29 +6853,35 @@ h1, h2, h3 {
                 }
             },
 
-            /** @private 이미지와 프롬프트 편집기를 렌더링 (우클릭 저장 및 파일명 통일 개선) */
+            /** @private 이미지와 프롬프트 편집기를 렌더링 */
             _renderImageContent: function(imageData, wrapper, overridePromptText = null) {
                 this.currentBlobUrl = imageData.imageUrl;
 
-                // 1. <img> 이미지 요소를 먼저 생성합니다.
+                // <img> 요소를 생성합니다.
                 const image = Utils.createElement('img', {
                     className: 'generated-image',
                     src: imageData.imageUrl,
                     alt: '생성된 삽화',
-                    style: { display: 'block' } // 링크의 일부로서 올바르게 표시되도록 스타일 추가
+                    style: { display: 'block' } // 링크의 기본 스타일 영향을 받지 않도록 처리
                 });
 
-                // 2. <img>를 감싸는 <a> 링크 요소를 생성합니다.
-                // href에는 이미지의 임시 주소를, download 속성에는 다운로드 버튼과 동일한 파일명을 지정합니다.
+                // 이미지를 감쌀 <a> (링크) 요소를 생성합니다.
                 const imageLink = Utils.createElement('a', {
                     href: imageData.imageUrl,
-                    // '다운로드' 버튼과 동일한 파일명 로직을 사용합니다.
-                    download: imageData.imageName || 'generated_image.png',
-                    title: '우클릭 후 "다른 이름으로 링크 저장..."을 선택하여 이미지를 다운로드할 수 있습니다.'
+                    // download 속성에 저장될 파일 이름을 지정합니다.
+                    download: imageData.imageName || 'generated_image.png'
                 });
 
-                // 3. <a> 링크 안에 <img>를 넣습니다.
+                // <a> 요소 안에 <img> 요소를 넣습니다.
                 imageLink.appendChild(image);
+
+                // [변경점] contextmenu 이벤트를 가로채서 다운로드를 실행하는 로직 추가
+                imageLink.addEventListener('contextmenu', (e) => {
+                    // 브라우저의 기본 우클릭(길게 누르기) 메뉴가 뜨는 것을 막습니다.
+                    e.preventDefault();
+                    // '다운로드' 버튼을 누른 것과 동일하게, 링크의 다운로드 동작을 강제로 실행합니다.
+                    imageLink.click();
+                });
 
                 const promptContainer = Utils.createElement('div', {
                     className: 'prompt-editor-container'
@@ -6890,7 +6897,7 @@ h1, h2, h3 {
                 }, promptForEditor || '');
                 promptContainer.append(promptLabel, promptTextarea);
 
-                // 4. 최종적으로 이미지 링크(<a>)와 프롬프트 컨테이너를 래퍼에 추가합니다.
+                // 이미지가 포함된 <a> 링크와 프롬프트 편집기를 wrapper에 추가합니다.
                 wrapper.append(imageLink, promptContainer);
             },
             /** @private 텍스트와 HTML이 섞인 콘텐츠를 렌더링 (안정적인 방식으로 변경) */
