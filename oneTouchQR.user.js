@@ -6780,6 +6780,7 @@ h1, h2, h3 {
             /**
              * [추가] 인라인 패널에 콘텐츠 표시 (cleanup 로직 분리)
              */
+
             displayInline: function(response, qrId, panelElement) {
                 if (!panelElement) return;
 
@@ -6795,9 +6796,10 @@ h1, h2, h3 {
                 const contentWrapper = panelElement.querySelector('#inline-image-panel-content-wrapper');
                 if (!contentWrapper) return;
 
-                // [수정] 높이 스타일을 먼저 초기화합니다.
+                // [수정] 높이 관련 스타일을 초기화합니다.
                 panelElement.style.height = '';
-                panelElement.style.minHeight = ''; // min-height도 함께 초기화
+                panelElement.style.minHeight = '';
+                // [제거] maxHeight 관련 코드를 제거했습니다.
 
                 this._renderContent(response, qrId, contentWrapper);
                 panelElement.style.display = 'block';
@@ -6812,14 +6814,21 @@ h1, h2, h3 {
                             if (!aspectRatio) return;
 
                             const panelWidth = panelElement.offsetWidth;
-                            const newHeight = panelWidth * aspectRatio;
+                            const newImageHeight = panelWidth * aspectRatio;
 
                             const wrapperStyles = window.getComputedStyle(contentWrapper);
                             const paddingTop = parseFloat(wrapperStyles.paddingTop);
                             const paddingBottom = parseFloat(wrapperStyles.paddingBottom);
 
-                            // [핵심 수정] height 대신 minHeight에 값을 설정합니다.
-                            panelElement.style.minHeight = `${newHeight + paddingTop + paddingBottom}px`;
+                            // 1. 패딩을 포함하여 비율에 따라 계산된 높이
+                            const calculatedHeight = newImageHeight + paddingTop + paddingBottom;
+
+                            // 2. 뷰포트 높이 기반의 최대 높이 (px 단위)
+                            const viewportMaxHeight = window.innerHeight - 350;
+
+                            // [수정] 둘 중 더 작은 값을 min-height로 설정합니다.
+                            const finalHeight = Math.min(calculatedHeight, viewportMaxHeight);
+                            panelElement.style.minHeight = `${finalHeight}px`;
                         };
 
                         // 이미지가 로드되면 실행될 로직
