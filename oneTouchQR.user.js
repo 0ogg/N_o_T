@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         깡갤 노벨 AI 원터치 QR
 // @namespace    https://novelai.net/
-// @version      2.3
+// @version      2.4
 // @description  novel ai 보조툴. NAI 본문을 추출하여 커스텀 프롬프트와 함께 API 요청후, 본문/출력창/이미지창에 선택적 출력. Firebase를 이용한 실행 기록 로깅 기능 추가.
 // @author       ㅇㅇ
 // @match        https://novelai.net/*
@@ -106,7 +106,7 @@
      * @property {string | UserInput | LorebookSlotValue | null} slots.afterSuffix - 탈옥 후
      * @property {number} extractLength - 본문에서 추출할 글자 수
      * @property {Object} postProcess - 후처리 설정
-     * @property {'output_panel' | 'prosemirror' | 'image_panel' | 'multi_qr' | 'none'} postProcess.action - 실행 후 동작
+     * @property {'output_panel' | 'prosemirror' | 'image_panel' | 'inline_image_panel' | 'multi_qr' | 'none'} postProcess.action - 실행 후 동작
      * @property {string | null} postProcess.nextQrId - 다중 QR 실행 시, 다음에 실행할 QR의 ID
      * @property {keyof QrPreset['slots'] | null} postProcess.insertSlot - 다중 QR 실행 시, 이번 응답을 다음 QR의 어느 슬롯에 넣을지
      * @property {string[] | null} simultaneousQrIds - 이 QR과 동시에 실행할 다른 QR들의 ID 배열
@@ -226,7 +226,7 @@
             return success;
         },
 
-toggleLoading: function(isLoading, buttonElement, aiType = null) {
+        toggleLoading: function(isLoading, buttonElement, aiType = null) {
             if (buttonElement) {
                 if (isLoading) {
                     // 일단 모든 로딩 클래스를 제거하여 상태를 초기화
@@ -714,7 +714,7 @@ toggleLoading: function(isLoading, buttonElement, aiType = null) {
                 category: null
             }, ];
         },
-getDefaultAiPresetsData: function() {
+        getDefaultAiPresetsData: function() {
             return [{
                     id: 'ai-default',
                     name: 'DEFAULT AI (AI 미입력된 QR 처리용)',
@@ -1078,7 +1078,7 @@ getDefaultAiPresetsData: function() {
                         } else {
                             transformedSlots[slotName] = null;
                         }
-                    } else if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
+                    } else if (typeof slotValue === 'object' && slotValue?.type === 'user_input') {
                         transformedSlots[slotName] = {
                             ...slotValue
                         };
@@ -1148,11 +1148,11 @@ getDefaultAiPresetsData: function() {
                         if (!slotValue) continue;
 
                         if (slotValue.type === 'prompt') {
-                            const trimmedName = slotValue.name ?.trim();
-                            const trimmedContent = slotValue.content ?.trim();
+                            const trimmedName = slotValue.name?.trim();
+                            const trimmedContent = slotValue.content?.trim();
                             const existingPrompt = allPrompts.find(p =>
-                                p.name ?.trim() === trimmedName &&
-                                p.content ?.trim() === trimmedContent
+                                p.name?.trim() === trimmedName &&
+                                p.content?.trim() === trimmedContent
                             );
 
                             if (existingPrompt) {
@@ -1376,7 +1376,7 @@ getDefaultAiPresetsData: function() {
                 responseToLog = JSON.stringify(response);
             }
 
-            const title = document.querySelector('title') ?.textContent.replace(/ - NovelAI$/, '').trim() || 'Untitled';
+            const title = document.querySelector('title')?.textContent.replace(/ - NovelAI$/, '').trim() || 'Untitled';
 
             const d = new Date();
             const pad = (num) => num.toString().padStart(2, '0');
@@ -2494,7 +2494,7 @@ getDefaultAiPresetsData: function() {
                                         Utils.createElement('input', {
                                             className: 'form-input',
                                             type: 'number',
-                                            value: target.contextConfig ?.budgetPriority || 0,
+                                            value: target.contextConfig?.budgetPriority || 0,
                                             onchange: e => onUpdate('contextConfig.budgetPriority', parseInt(e.target.value, 10))
                                         }),
                                         Utils.createElement('label', {
@@ -2547,7 +2547,7 @@ getDefaultAiPresetsData: function() {
                                             redrawForm(viewState);
                                         }
                                     });
-                                    if (viewState.selectedItem ?.id === id) {
+                                    if (viewState.selectedItem?.id === id) {
                                         itemEl.style.backgroundColor = 'rgba(255,255,255,0.15)';
                                     }
                                     return itemEl;
@@ -2596,7 +2596,7 @@ getDefaultAiPresetsData: function() {
                                         contextConfig: {
                                             budgetPriority: 400
                                         },
-                                        category: viewState.selectedItem ?.type === 'category' ? viewState.selectedItem.id : null
+                                        category: viewState.selectedItem?.type === 'category' ? viewState.selectedItem.id : null
                                     };
                                     tempItem.data.entries.push(newEntry);
                                     redrawForm(viewState);
@@ -2634,9 +2634,9 @@ getDefaultAiPresetsData: function() {
                                 const found = source.find(p => p.id === selectedValue);
                                 const name = found ? found.name : '잘못된 ID';
                                 buttonText = [Utils.createElement('b', {}, `선택됨: ${name}`)];
-                            } else if (selectedValue ?.type === 'user_input') {
+                            } else if (selectedValue?.type === 'user_input') {
                                 buttonText = ['사용자 입력: ', Utils.createElement('b', {}, selectedValue.caption || '(설명 없음)')];
-                            } else if (selectedValue ?.type === 'lorebook') {
+                            } else if (selectedValue?.type === 'lorebook') {
                                 buttonText = [Utils.createElement('b', {}, `로어북: ${selectedValue.ids.length}개 선택됨`)];
                             } else {
                                 buttonText = [Utils.createElement('b', {}, '선택...')];
@@ -3429,6 +3429,30 @@ h1, h2, h3 {
         transform: translate(-50%, -50%) !important;
     }
 }
+#inline-image-panel {
+    display: none;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    border: none;
+    overflow-y: auto;
+}
+#inline-image-panel-content-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+#inline-image-panel-content-wrapper img.generated-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 15px;
+}
+#inline-image-panel-content-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
 `,
 
         init: function() {
@@ -3541,7 +3565,7 @@ h1, h2, h3 {
 
                 let rawIconInput = overrideIcon;
                 if (!rawIconInput) {
-                    if (item.remote ?.icon) rawIconInput = item.remote.icon;
+                    if (item.remote?.icon) rawIconInput = item.remote.icon;
                     else if (item.icon) rawIconInput = item.icon;
                 }
 
@@ -3564,7 +3588,7 @@ h1, h2, h3 {
                     button.appendChild(iconElement);
                 } else {
                     const emojiRegex = /^(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26ff]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u2ce9|\u2934|\u2935|[\u2190-\u21ff])/;
-                    const match = item.name ?.match(emojiRegex);
+                    const match = item.name?.match(emojiRegex);
                     if (match) {
                         button.textContent = match[0];
                         button.style.fontSize = 'calc(var(--remote-button-size) * 0.5)';
@@ -3715,7 +3739,7 @@ h1, h2, h3 {
 
                         for (const slotName of slotOrder) {
                             const slotValue = qr.slots[slotName];
-                            if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
+                            if (typeof slotValue === 'object' && slotValue?.type === 'user_input') {
                                 targetSlot = slotName;
                                 break;
                             }
@@ -4368,6 +4392,9 @@ h1, h2, h3 {
                             value: 'prosemirror',
                             label: '본문입력'
                         }, {
+                            value: 'inline_image_panel',
+                            label: '인라인 삽화'
+                        }, {
                             value: 'image_panel',
                             label: '보조창 (삽화창)'
                         }, {
@@ -4773,15 +4800,25 @@ h1, h2, h3 {
                 });
 
                 // [추가] 투명도 슬라이더 UI 생성
-                const transparencyContainer = Utils.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } });
-                const transparencyValueLabel = Utils.createElement('span', { textContent: `${remoteConfig.transparency || 100}%` });
+                const transparencyContainer = Utils.createElement('div', {
+                    style: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }
+                });
+                const transparencyValueLabel = Utils.createElement('span', {
+                    textContent: `${remoteConfig.transparency || 100}%`
+                });
                 const transparencyInput = Utils.createElement('input', {
                     type: 'range',
                     min: '0',
                     max: '100',
                     step: '1',
                     value: remoteConfig.transparency || 100,
-                    style: { flexGrow: 1 },
+                    style: {
+                        flexGrow: 1
+                    },
                     oninput: (e) => {
                         const value = parseInt(e.target.value);
                         transparencyValueLabel.textContent = `${value}%`;
@@ -5050,7 +5087,7 @@ h1, h2, h3 {
             render();
             return section;
         },
-        
+
         createLoggingSettingsSection: function() {
             const section = Utils.createElement('div', {
                 className: 'settings-section',
@@ -5695,6 +5732,30 @@ h1, h2, h3 {
 
             Utils.makeDraggable(imagePanel, dragHandle, null, "imagePanelPosition");
         },
+        findOrCreateInlineImagePanel: function() {
+            // 이미 패널이 존재하면 해당 요소를 즉시 반환
+            const existingPanel = document.getElementById('inline-image-panel');
+            if (existingPanel) return existingPanel;
+
+            // 패널이 없으면 새로 생성
+            const contentWrapper = Utils.createElement('div', {
+                id: 'inline-image-panel-content-wrapper'
+            });
+            const inlineImagePanel = Utils.createElement('div', {
+                id: 'inline-image-panel'
+            });
+            inlineImagePanel.appendChild(contentWrapper);
+
+            // 삽입 위치 탐색 및 삽입
+            const ttsControls = document.querySelector('.conversation-container .tts-controls');
+            if (ttsControls && ttsControls.parentNode) {
+                ttsControls.parentNode.insertBefore(inlineImagePanel, ttsControls);
+                return inlineImagePanel; // 성공 시 생성된 패널 요소 반환
+            } else {
+                console.warn("[QR] .tts-controls 요소를 찾을 수 없어 인라인 이미지 패널을 삽입할 수 없습니다.");
+                return null; // 실패 시 null 반환
+            }
+        },
 
         switchSettingsTab: function(tabId) {
             document.querySelectorAll('.settings-tab').forEach(tab => tab.classList.remove('active'));
@@ -5799,8 +5860,8 @@ h1, h2, h3 {
          * @param {HTMLElement | null} buttonElement - 로딩 애니메이션을 적용할 요소
          * @param {Object} [options={}] - 추가 옵션 (한영 입력창 등에서 직접 입력을 전달하기 위함)
          */
-   
-		async execute(qrId, buttonElement, options = {}) {
+
+        async execute(qrId, buttonElement, options = {}) {
             // [수정] 버튼이 이미 로딩 상태이면 중복 실행 방지
             if (buttonElement && (buttonElement.classList.contains('loading') || buttonElement.classList.contains('loading-text'))) {
                 return;
@@ -5825,11 +5886,17 @@ h1, h2, h3 {
                     // [수정] 메인 QR 중복 방지를 위한 필터 추가 (안전성 개선)
                     qrIdsToRun.push(...mainQr.simultaneousQrIds.filter(id => id !== qrId));
                 }
-                
+
                 // 동시 실행은 병렬로 처리합니다.
-                const mainExecutionPromise = this._executeInternal(qrId, buttonElement, { ...options, executionPath: [] });
-                const simultaneousPromises = qrIdsToRun.slice(1).map(id => 
-                    this._executeInternal(id, buttonElement, { ...options, executionPath: [] })
+                const mainExecutionPromise = this._executeInternal(qrId, buttonElement, {
+                    ...options,
+                    executionPath: []
+                });
+                const simultaneousPromises = qrIdsToRun.slice(1).map(id =>
+                    this._executeInternal(id, buttonElement, {
+                        ...options,
+                        executionPath: []
+                    })
                 );
 
                 // 메인 실행이 끝날 때까지 대기
@@ -5865,7 +5932,7 @@ h1, h2, h3 {
             try {
                 const qr = Storage.getQRById(qrId);
                 if (!qr) throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
-                
+
                 let aiPreset = Storage.getAiPresetById(qr.aiPresetId) || Storage.getAiPresetById('ai-default');
                 if (!aiPreset) throw new Error(`AI 프리셋을 찾을 수 없습니다.`);
 
@@ -5900,7 +5967,10 @@ h1, h2, h3 {
                     // 일반 후처리 실행
                     await this._handlePostProcess(qr, apiResponse, buttonElement, newExecutionPath);
                     // 연속 실행이 아닌 경우, 이 함수는 완료되며 로딩 해제는 execute()의 finally가 처리합니다.
-                    return { finalResponse: apiResponse, finalAiType: aiPreset.type };
+                    return {
+                        finalResponse: apiResponse,
+                        finalAiType: aiPreset.type
+                    };
                 }
             } catch (error) {
                 // 내부 오류를 execute()의 catch 블록으로 전달
@@ -5961,7 +6031,7 @@ h1, h2, h3 {
 
             for (const slotName of slotOrder) {
                 const slotValue = qr.slots[slotName];
-                if (typeof slotValue === 'object' && slotValue ?.type === 'user_input') {
+                if (typeof slotValue === 'object' && slotValue?.type === 'user_input') {
                     let userInput;
                     if (options.directUserInput && options.userInputSlot === slotName) {
                         userInput = options.directUserInput;
@@ -6035,7 +6105,7 @@ h1, h2, h3 {
 
             if (activeEntries.length === 0) return '';
 
-            activeEntries.sort((a, b) => (b.contextConfig ?.budgetPriority || 0) - (a.contextConfig ?.budgetPriority || 0));
+            activeEntries.sort((a, b) => (b.contextConfig?.budgetPriority || 0) - (a.contextConfig?.budgetPriority || 0));
 
             return activeEntries.map(entry => entry.text).join('\n');
         },
@@ -6051,7 +6121,7 @@ h1, h2, h3 {
             }
             return pText
         },
-async _handlePostProcess(qr, response, buttonElement, executionPath) {
+        async _handlePostProcess(qr, response, buttonElement, executionPath) {
             switch (qr.postProcess.action) {
                 case 'output_panel':
                     UI.toggleOutputPanel(true);
@@ -6105,6 +6175,19 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 case 'image_panel':
                     Features.Image.displayInPanel(response, qr.id);
                     break;
+                case 'inline_image_panel': { // 변수 스코프를 위해 블록 사용
+                    // 1. QR 실행 시점에 패널을 찾거나 생성
+                    const panel = UI.findOrCreateInlineImagePanel();
+
+                    // 2. 패널이 성공적으로 준비되었을 때만 내용 표시
+                    if (panel) {
+                        Features.Image.displayInline(response, qr.id, panel);
+                    } else {
+                        // 패널 삽입 위치를 찾지 못한 경우 사용자에게 알림
+                        alert('인라인 삽화를 위한 위치(.tts-controls)를 찾을 수 없습니다. 현재 페이지에서는 이 기능을 사용할 수 없습니다.');
+                    }
+                    break;
+                }
 
                 case 'multi_qr':
                     if (qr.postProcess.nextQrId) {
@@ -6116,7 +6199,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                                 Utils.toggleLoading(true, buttonElement, nextAiPreset.type);
                             }
                         }
-                        
+
                         const nextOptions = {
                             previousResponse: response,
                             insertSlot: qr.postProcess.insertSlot,
@@ -6217,7 +6300,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 let errorMessage = `Gemini API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ?.message || responseText;
+                    errorMessage += errorJson.error?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -6226,7 +6309,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
 
             try {
                 const data = JSON.parse(responseText);
-                if (data.candidates && data.candidates[0] ?.content.parts[0] ?.text) {
+                if (data.candidates && data.candidates[0]?.content.parts[0]?.text) {
                     return data.candidates[0].content.parts[0].text;
                 } else if (data.promptFeedback) {
                     throw new Error("Gemini 요청이 차단되었습니다: " + JSON.stringify(data.promptFeedback));
@@ -6248,7 +6331,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 endpoint,
                 parameters
             } = aiPreset;
-            const apiUrl = endpoint ?.trim().replace(/\/$/, '') || 'https://api.openai.com/v1/chat/completions';
+            const apiUrl = endpoint?.trim().replace(/\/$/, '') || 'https://api.openai.com/v1/chat/completions';
 
             const requestBody = {
                 model: parameters.model,
@@ -6276,7 +6359,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 let errorMessage = `OpenAI API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ?.message || responseText;
+                    errorMessage += errorJson.error?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -6285,7 +6368,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
 
             try {
                 const data = JSON.parse(responseText);
-                if (data.choices && data.choices[0] ?.message ?.content) {
+                if (data.choices && data.choices[0]?.message?.content) {
                     return data.choices[0].message.content;
                 } else {
                     throw new Error("OpenAI로부터 유효한 응답을 받지 못했습니다. 받은 내용: " + responseText);
@@ -6294,12 +6377,16 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 throw new Error(`OpenAI API 응답이 유효한 JSON 형식이 아닙니다. 받은 응답: ${responseText}`);
             }
         },
-	/**
+        /**
          * OpenAI Text Completions API 요청 (스트리밍 및 Generic 필터링 지원)
          * @private
          */
         async requestTextCompletion(aiPreset, fullPrompt) {
-            const { apiKey, endpoint, parameters } = aiPreset;
+            const {
+                apiKey,
+                endpoint,
+                parameters
+            } = aiPreset;
 
             // --- [수정된 부분] ---
             // 엔드포인트 URL의 끝에 '/v1'이 있으면 제거하고, '/v1/completions'를 붙여 경로를 보정합니다.
@@ -6307,7 +6394,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
             const baseUrl = endpoint?.trim().replace(/\/v1\/?$/, '').replace(/\/$/, '');
             const apiUrl = `${baseUrl}/v1/completions`;
             // --- [수정 끝] ---
-            
+
             const validKeys = [
                 'model', 'prompt', 'temperature', 'top_p', 'max_tokens',
                 'presence_penalty', 'frequency_penalty', 'repetition_penalty',
@@ -6332,11 +6419,11 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                     requestBody[mappedKey] = parameters[key];
                 }
             });
-            
+
             if (Array.isArray(requestBody.stop)) {
                 requestBody.stop = requestBody.stop.slice(0, 4);
             }
-            
+
             // 디버깅 로그는 유지하여 계속 확인하는 것이 좋습니다.
             console.log("===== [Text Completion] API 요청 디버그 정보 =====");
             console.log("요청 URL:", apiUrl);
@@ -6375,7 +6462,10 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
 
             try {
                 while (true) {
-                    const { value, done } = await reader.read();
+                    const {
+                        value,
+                        done
+                    } = await reader.read();
                     if (done) break;
 
                     const chunk = decoder.decode(value);
@@ -6414,7 +6504,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 endpoint,
                 parameters
             } = aiPreset;
-            const apiUrl = endpoint ?.trim().replace(/\/$/, '') || 'https://api.anthropic.com/v1/messages';
+            const apiUrl = endpoint?.trim().replace(/\/$/, '') || 'https://api.anthropic.com/v1/messages';
 
             const requestBody = {
                 model: parameters.model,
@@ -6445,7 +6535,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 let errorMessage = `Claude API 요청 실패 (HTTP ${response.status}): `;
                 try {
                     const errorJson = JSON.parse(responseText);
-                    errorMessage += errorJson.error ?.message || responseText;
+                    errorMessage += errorJson.error?.message || responseText;
                 } catch (e) {
                     errorMessage += responseText;
                 }
@@ -6456,7 +6546,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
                 const data = JSON.parse(responseText);
                 if (Array.isArray(data.content)) {
                     const textPart = data.content.find(part => part.type === 'text');
-                    if (textPart ?.text) return textPart.text;
+                    if (textPart?.text) return textPart.text;
                 }
                 throw new Error("Claude로부터 유효한 텍스트 응답을 받지 못했습니다. 받은 내용: " + responseText);
             } catch (jsonError) {
@@ -6532,7 +6622,7 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
             const imageBlob = await imageFile.async('blob');
             const imageUrl = URL.createObjectURL(imageBlob);
 
-            const title = document.querySelector('[aria-label="Story Title"]') ?.value || 'story';
+            const title = document.querySelector('[aria-label="Story Title"]')?.value || 'story';
             const dateTime = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
             const imageName = `${title}_${dateTime}.png`;
 
@@ -6643,39 +6733,114 @@ async _handlePostProcess(qr, response, buttonElement, executionPath) {
             },
 
             /**
-             * API 응답을 받아 콘텐츠 유형을 판별하고 보조창에 표시
+             * API 응답을 받아 콘텐츠 유형을 판별하고 콘텐츠를 렌더링합니다.
              * @param {string | Object} response - API 응답. 텍스트 또는 이미지 정보 객체.
              * @param {string} qrId - 이 응답을 생성한 QR의 ID
+             * @param {HTMLElement} wrapperElement - 콘텐츠를 삽입할 HTML 요소 (예: #image-panel-content-wrapper)
              * @param {string | null} [overridePromptText=null] - 재생성 시 텍스트에리어 내용을 유지하기 위한 파라미터
              */
+            _renderContent: function(response, qrId, wrapperElement, overridePromptText = null) {
+                // 이 함수는 cleanup을 호출하지 않고, 외부에서 cleanup을 호출해야 합니다.
+                wrapperElement.innerHTML = '';
+
+                // 1. 메인 콘텐츠 렌더링
+                if (typeof response === 'object' && response.imageUrl) {
+                    this._renderImageContent(response, wrapperElement, overridePromptText);
+                } else if (typeof response === 'string') {
+                    this._renderMixedContent(response, wrapperElement);
+                } else {
+                    const fallbackDiv = document.createElement('div');
+                    fallbackDiv.textContent = `알 수 없는 형식의 응답입니다:\n${JSON.stringify(response, null, 2)}`;
+                    wrapperElement.appendChild(fallbackDiv);
+                }
+
+                // 2. 공통 버튼을 맨 아래에 추가
+                const buttonsContainer = this._createPanelButtons();
+                wrapperElement.appendChild(buttonsContainer);
+
+                // [수정] 콘텐츠가 새로 렌더링된 후 스크롤을 맨 위로 이동
+                wrapperElement.scrollTop = 0;
+            },
+
+            /**
+             * [수정] 보조창(Auxiliary Panel)에 콘텐츠 표시
+             */
             displayInPanel: function(response, qrId, overridePromptText = null) {
-                this.cleanup();
+                this.cleanup(); // 기존 리소스 정리
                 this.currentResponse = response;
                 this.currentQrId = qrId;
 
                 const contentWrapper = document.getElementById('image-panel-content-wrapper');
                 if (!contentWrapper) return;
-                contentWrapper.innerHTML = '';
 
-                // 1. 메인 콘텐츠 렌더링
-                if (typeof response === 'object' && response.imageUrl) {
-                    this._renderImageContent(response, contentWrapper, overridePromptText);
-                } else if (typeof response === 'string') {
-                    this._renderMixedContent(response, contentWrapper);
-                } else {
-                    const fallbackDiv = document.createElement('div');
-                    fallbackDiv.textContent = `알 수 없는 형식의 응답입니다:\n${JSON.stringify(response, null, 2)}`;
-                    contentWrapper.appendChild(fallbackDiv);
+                this._renderContent(response, qrId, contentWrapper, overridePromptText);
+                UI.toggleImagePanel(true);
+            },
+
+            /**
+             * [추가] 인라인 패널에 콘텐츠 표시 (cleanup 로직 분리)
+             */
+            displayInline: function(response, qrId, panelElement) {
+                if (!panelElement) return;
+
+                // 이전에 등록된 resize 핸들러가 있다면 제거 (메모리 누수 방지)
+                if (panelElement._resizeHandler) {
+                    window.removeEventListener('resize', panelElement._resizeHandler);
+                    delete panelElement._resizeHandler;
                 }
 
-                // 2. 공통 버튼을 맨 아래에 추가
-                const buttonsContainer = this._createPanelButtons();
-                contentWrapper.appendChild(buttonsContainer);
+                this.currentResponse = response;
+                this.currentQrId = qrId;
 
-                // [수정] 콘텐츠가 새로 렌더링된 후 스크롤을 맨 위로 이동
-                contentWrapper.scrollTop = 0;
+                const contentWrapper = panelElement.querySelector('#inline-image-panel-content-wrapper');
+                if (!contentWrapper) return;
 
-                UI.toggleImagePanel(true);
+                // [수정] 높이 스타일을 먼저 초기화합니다.
+                panelElement.style.height = '';
+                panelElement.style.minHeight = ''; // min-height도 함께 초기화
+
+                this._renderContent(response, qrId, contentWrapper);
+                panelElement.style.display = 'block';
+
+                // 응답이 이미지일 경우에만 비율 기반 리사이즈 로직을 추가합니다.
+                if (typeof response === 'object' && response.imageUrl) {
+                    const imageElement = contentWrapper.querySelector('img.generated-image');
+                    if (imageElement) {
+                        // 리사이즈를 처리할 핸들러 함수 정의
+                        const resizeHandler = () => {
+                            const aspectRatio = parseFloat(panelElement.dataset.aspectRatio);
+                            if (!aspectRatio) return;
+
+                            const panelWidth = panelElement.offsetWidth;
+                            const newHeight = panelWidth * aspectRatio;
+
+                            const wrapperStyles = window.getComputedStyle(contentWrapper);
+                            const paddingTop = parseFloat(wrapperStyles.paddingTop);
+                            const paddingBottom = parseFloat(wrapperStyles.paddingBottom);
+
+                            // [핵심 수정] height 대신 minHeight에 값을 설정합니다.
+                            panelElement.style.minHeight = `${newHeight + paddingTop + paddingBottom}px`;
+                        };
+
+                        // 이미지가 로드되면 실행될 로직
+                        const onImageLoad = () => {
+                            const aspectRatio = imageElement.naturalHeight / imageElement.naturalWidth;
+                            panelElement.dataset.aspectRatio = aspectRatio;
+
+                            panelElement._resizeHandler = resizeHandler;
+                            window.addEventListener('resize', panelElement._resizeHandler);
+
+                            // 초기 높이를 설정하기 위해 핸들러를 즉시 한 번 실행
+                            resizeHandler();
+                        };
+
+                        if (imageElement.complete) {
+                            onImageLoad();
+                        } else {
+                            imageElement.onload = onImageLoad;
+                        }
+                    }
+                }
             },
 
             /** @private 이미지와 프롬프트 편집기를 렌더링 */
