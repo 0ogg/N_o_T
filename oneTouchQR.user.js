@@ -14,6 +14,18 @@
 // ==/UserScript==
 (function() {
     'use strict';
+    // 기존의 console.log 함수를 백업해둡니다.
+    const originalConsoleLog = console.log;
+
+    // console.log 함수를 우리만의 새 함수로 덮어씁니다.
+    console.log = function(...args) {
+        // Storage에서 'debugModeEnabled' 설정을 확인합니다.
+        // 이 설정은 2단계에서 UI로 만들게 됩니다.
+        if (Storage.get('debugModeEnabled', false)) {
+            // 디버그 모드가 켜져 있을 때만, 백업해둔 원래 함수를 실행합니다.
+            originalConsoleLog.apply(console, args);
+        }
+    };
 
     // 데이터 구조 정의 (오류 수정 및 정리)
     /**
@@ -185,11 +197,9 @@
             if (success) {
                 console.log(flashMessage); // 개발자 콘솔에는 로그 유지
 
-                // 플래시 메시지 엘리먼트 생성
                 const flashElement = document.createElement('div');
                 flashElement.textContent = flashMessage;
 
-                // 플래시 메시지 스타일링
                 Object.assign(flashElement.style, {
                     position: 'fixed',
                     left: '50%',
@@ -207,13 +217,11 @@
                     transition: 'opacity 0.3s ease'
                 });
 
-                // DOM에 추가 후 부드럽게 나타나게 함
                 document.body.appendChild(flashElement);
                 setTimeout(() => {
                     flashElement.style.opacity = '1';
                 }, 10);
 
-                // 1.5초 후 부드럽게 사라지며 DOM에서 제거
                 setTimeout(() => {
                     flashElement.style.opacity = '0';
                     setTimeout(() => {
@@ -3716,8 +3724,28 @@ h1, h2, h3 {
                 className: 'menu-button',
                 id: 'copy-button',
                 onclick: () => {
-                    const text = Utils.stripHtml(document.getElementById('extracted-text').innerHTML);
-                    Utils.copyToClipboard(text);
+                    const textPanel = document.getElementById('extracted-text');
+                    if (!textPanel) return;
+
+                    // 1. 브라우저의 선택(Selection) 기능을 이용합니다.
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+
+                    // 2. 출력창('extracted-text')의 모든 내용을 선택(Select All)합니다.
+                    //    이것은 사용자가 마우스로 드래그하여 전체를 선택한 것과 동일합니다.
+                    range.selectNodeContents(textPanel);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+
+                    // 3. "선택된 텍스트"를 문자열로 가져옵니다.
+                    //    브라우저가 알아서 <p>와 <br>을 줄바꿈(\n)으로 변환해 줍니다.
+                    const textToCopy = selection.toString();
+
+                    // 4. 복사가 끝났으니, 화면에 파랗게 선택된 것을 해제합니다.
+                    selection.removeAllRanges();
+
+                    // 5. 이제 완벽하게 변환된 텍스트를, 원래 잘 작동하던 복사 함수에 넘깁니다.
+                    Utils.copyToClipboard(textToCopy);
                 }
             }, '복사');
             topMenu.appendChild(copyButton);
@@ -4297,6 +4325,38 @@ h1, h2, h3 {
                 }
             }, '번역, 삽화 등 기본 제공 기능만 초기 설정으로 되돌립니다. 사용자가 만든 다른 QR은 영향을 받지 않습니다.'));
             section.append(backupGroup, resetGroup, restoreDefaultsGroup);
+            section.appendChild(Utils.createElement('h4', {}, '개발자 설정'));
+            const debugGroup = Utils.createElement('div', {
+                className: 'form-group'
+            });
+            const debugCheckbox = Utils.createElement('input', {
+                className: 'form-checkbox',
+                id: 'debug-mode-checkbox',
+                type: 'checkbox',
+                checked: Storage.get('debugModeEnabled', false),
+                onchange: (e) => {
+                    Storage.set('debugModeEnabled', e.target.checked);
+                    if (e.target.checked) {
+                        alert('디버그 모드가 활성화되었습니다. 이제부터 브라우저 콘솔(F12)에 상세 로그가 출력됩니다.');
+                    } else {
+                        alert('디버그 모드가 비활성화되었습니다.');
+                    }
+                }
+            });
+            const debugLabel = Utils.createElement('label', {
+                for: 'debug-mode-checkbox',
+                className: 'form-checkbox-label'
+            }, [debugCheckbox, '디버그 모드 활성화']);
+            const debugDescription = Utils.createElement('p', {
+                style: {
+                    fontSize: '12px',
+                    opacity: '0.8',
+                    margin: '5px 0 0 0'
+                }
+            }, '스크립트의 상세 동작을 브라우저 개발자 콘솔(F12)에 출력합니다. 평소에는 꺼두는 것을 권장합니다.');
+
+            debugGroup.append(debugLabel, debugDescription);
+            section.appendChild(debugGroup);
 
             return section;
         },
@@ -6642,54 +6702,59 @@ h1, h2, h3 {
                 if (!extractedText) return;
 
                 const shouldRenderMarkdown = Storage.get('renderMarkdown', true);
-                const shouldRenderHtml = Storage.get('renderHtml', false);
+                UI.updateTextStyle();
 
-                let finalText = pText;
+                // 1. 텍스트를 문단 배열로 나눕니다.
+                const paragraphs = pText.split('\n');
 
+                // 2. 각 문단(line)을 순회하며 하이라이트를 적용합니다. (이 부분이 복원되었습니다)
+                const processedParagraphs = paragraphs.map(line => {
+                    // 정규식으로 "..." 와 “...” 두 패턴을 모두 찾아 처리합니다.
+                    return line.replace(/"(.*?)"|“(.*?)”/g, (match, group1, group2) => {
+                        if (group1 !== undefined) {
+                            return `<span class="highlight-text">"${group1}"</span>`;
+                        }
+                        if (group2 !== undefined) {
+                            return `<span class="highlight-text">“${group2}”</span>`;
+                        }
+                        return match;
+                    });
+                });
+
+                // 3. 처리된 문단 배열을 기반으로 최종 HTML을 생성합니다.
+                let finalHtml;
                 if (shouldRenderMarkdown) {
-                    // [수정] HTML 렌더링이 꺼져 있을 때, HTML 태그가 정상적으로 보이도록 이스케이프 처리
-                    if (!shouldRenderHtml) {
-                        finalText = finalText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    }
-                    extractedText.innerHTML = this._markdownToHtml(finalText);
+                    const processedText = processedParagraphs.join('\n');
+                    finalHtml = this._markdownToHtml(processedText);
                 } else {
-                    if (shouldRenderHtml) {
-                        extractedText.innerHTML = finalText;
-                    } else {
-                        // 둘 다 꺼져 있으면 순수 텍스트로 표시
-                        extractedText.textContent = finalText;
-                    }
+                    finalHtml = processedParagraphs.map(line => {
+                        return `<p>${line.trim() === '' ? '<br>' : line}</p>`;
+                    }).join('');
                 }
+
+                extractedText.innerHTML = finalHtml;
             },
 
             /**
-             * Marked.js를 사용하여 마크다운 텍스트를 HTML 문자열로 변환
-             * @param {string} mdText - 변환할 마크다운 텍스트
+             * Marked.js를 사용하여 텍스트를 HTML로 변환 (하이라이트 기능 제거됨)
+             * @param {string} mdText - 변환할 텍스트
              * @returns {string} 변환된 HTML 문자열
              * @private
              */
             _markdownToHtml: function(mdText) {
-                UI.updateTextStyle();
+                // 원본 스크립트의 중복 하이라이트 로직을 완전히 제거했습니다.
 
-                // 스크립트 고유의 강조 처리 (따옴표) - marked 처리 전에 적용
-                let processedText = mdText.replace(/"([^"]+)"/g, '<span class="highlight-text">"$1"</span>');
+                let html = marked.parse(mdText);
 
-                // marked를 사용하여 HTML로 변환
-                let html = marked.parse(processedText);
-
-                // 테이블에 기본 스타일이 적용되도록 보장
                 if (html.includes('<table')) {
                     this._ensureTableStyles();
                 }
-
-                // <p> 태그 안에 있는 블록 요소를 밖으로 꺼내는 후처리
                 html = html.replace(/<p>(\s*<(?:table|thead|tbody|tr|th|td|ul|ol|li|pre|code|hr)[\s\S]*?)<\/p>/g, '$1');
                 html = html.replace(/<p>(\s*<h[1-6][\s\S]*?)<\/p>/g, '$1');
-                html = html.replace(/<p><\/p>/g, ''); // 빈 <p> 태그 제거
+                html = html.replace(/<p><\/p>/g, '');
 
                 return html;
             },
-
             /**
              * Markdown 테이블 스타일이 문서에 없으면 추가하는 함수
              * @private
