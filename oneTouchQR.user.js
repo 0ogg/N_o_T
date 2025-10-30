@@ -6841,9 +6841,7 @@ h1, h2, h3 {
                     className: 'generated-image',
                     src: imageData.imageUrl,
                     alt: '생성된 삽화',
-                    style: {
-                        display: 'block'
-                    }
+                    style: { display: 'block' }
                 });
                 const imageLink = Utils.createElement('a', {
                     href: imageData.imageUrl,
@@ -6876,11 +6874,7 @@ h1, h2, h3 {
 
                 if (!shouldRenderMarkdown && !shouldRenderHtml) {
                     const contentDiv = Utils.createElement('div', {
-                        style: {
-                            padding: '5px',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word'
-                        },
+                        style: { padding: '5px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
                         textContent: text
                     });
                     wrapper.appendChild(contentDiv);
@@ -6913,20 +6907,12 @@ h1, h2, h3 {
                 };
                 const renderHtmlPart = (htmlContent) => {
                     const iframeContainer = Utils.createElement('div', {
-                        style: {
-                            width: '100%',
-                            overflow: 'hidden'
-                        }
+                        style: { width: '100%', overflow: 'hidden' }
                     });
                     const iframe = Utils.createElement('iframe', {
                         srcdoc: htmlContent,
                         sandbox: "allow-scripts allow-same-origin",
-                        style: {
-                            width: '100%',
-                            height: '90vh',
-                            border: 'none',
-                            display: 'block'
-                        }
+                        style: { width: '100%', height: '90vh', border: 'none', display: 'block' }
                     });
                     iframeContainer.appendChild(iframe);
                     wrapper.appendChild(iframeContainer);
@@ -6956,74 +6942,67 @@ h1, h2, h3 {
                 });
                 const response = this.currentResponse;
 
-                const copyButton = Utils.createElement('button', {
-                    className: 'form-button',
-                    textContent: '응답 복사'
-                });
-                copyButton.onclick = () => {
-                    const responseToCopy = (typeof response === 'object') ? JSON.stringify(response, null, 2) : response;
-                    Utils.copyToClipboard(responseToCopy, '응답 내용이 클립보드에 복사되었습니다.');
-                };
-                buttonsContainer.appendChild(copyButton);
+                // ==================== [수정 1: 조건부 버튼 생성] ====================
+                // API 응답이 이미지가 아닐 경우(텍스트일 경우)에만 복사/번역 버튼을 생성합니다.
+                if (!(typeof response === 'object' && response.imageUrl)) {
+                    const copyButton = Utils.createElement('button', {
+                        className: 'form-button',
+                        textContent: '응답 복사'
+                    });
+                    copyButton.onclick = () => {
+                        const responseToCopy = (typeof response === 'object') ? JSON.stringify(response, null, 2) : response;
+                        Utils.copyToClipboard(responseToCopy, '응답 내용이 클립보드에 복사되었습니다.');
+                    };
 
-                const translateButton = Utils.createElement('button', {
-                    className: 'form-button',
-                    textContent: '번역'
-                });
-                translateButton.onclick = async (e) => {
-                    const button = e.currentTarget;
-                    if (button.classList.contains('loading')) return;
-                    if (!wrapperElement || wrapperElement.querySelector('.translation-wrapper')) return;
+                    const translateButton = Utils.createElement('button', {
+                        className: 'form-button',
+                        textContent: '번역'
+                    });
+                    translateButton.onclick = async (e) => {
+                        const button = e.currentTarget;
+                        if (button.classList.contains('loading')) return;
+                        if (!wrapperElement || wrapperElement.querySelector('.translation-wrapper')) return;
 
-                    const textToTranslate = (typeof this.currentResponse === 'object' && this.currentResponse.prompt) ? this.currentResponse.prompt : (typeof this.currentResponse === 'string' ? this.currentResponse : '');
-                    if (!textToTranslate.trim()) {
-                        alert('번역할 텍스트가 없습니다.');
-                        return;
-                    }
-                    Utils.toggleLoading(true, button);
-                    try {
-                        const translateQr = Storage.getQRById('default-translate');
-                        if (!translateQr) throw new Error("기본 번역 QR('default-translate')을 찾을 수 없습니다.");
-                        const aiPresetId = translateQr.aiPresetId || 'ai-default';
-                        const aiPreset = Storage.getAiPresetById(aiPresetId);
-                        if (!aiPreset) throw new Error(`기본 번역에 사용할 AI 프리셋(ID: ${aiPresetId})을 찾을 수 없습니다.`);
-                        const promptPreset = Storage.getPromptById(translateQr.slots.prefix);
-                        if (!promptPreset) throw new Error("기본 번역 프롬프트를 찾을 수 없습니다.");
+                        const textToTranslate = typeof this.currentResponse === 'string' ? this.currentResponse : '';
+                        if (!textToTranslate.trim()) {
+                            alert('번역할 텍스트가 없습니다.');
+                            return;
+                        }
+                        Utils.toggleLoading(true, button);
+                        try {
+                            const translateQr = Storage.getQRById('default-translate');
+                            if (!translateQr) throw new Error("기본 번역 QR('default-translate')을 찾을 수 없습니다.");
+                            const aiPresetId = translateQr.aiPresetId || 'ai-default';
+                            const aiPreset = Storage.getAiPresetById(aiPresetId);
+                            if (!aiPreset) throw new Error(`기본 번역에 사용할 AI 프리셋(ID: ${aiPresetId})을 찾을 수 없습니다.`);
+                            const promptPreset = Storage.getPromptById(translateQr.slots.prefix);
+                            if (!promptPreset) throw new Error("기본 번역 프롬프트를 찾을 수 없습니다.");
 
-                        const fullPrompt = `${promptPreset.content}\n\n${textToTranslate}`;
-                        const translatedText = await ApiHandler.request(aiPreset, fullPrompt);
+                            const fullPrompt = `${promptPreset.content}\n\n${textToTranslate}`;
+                            const translatedText = await ApiHandler.request(aiPreset, fullPrompt);
 
-                        const buttonsContainerInWrapper = wrapperElement.querySelector('.buttons-container');
-                        const childrenToWrap = [...wrapperElement.children].filter(child => child !== buttonsContainerInWrapper);
-                        const originalContentContainer = Utils.createElement('div');
-                        childrenToWrap.forEach(child => originalContentContainer.appendChild(child));
-                        const details = Utils.createElement('details', {
-                            open: false
-                        }, [
-                            Utils.createElement('summary', {
-                                textContent: '원문 보기',
-                                style: {
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    margin: '10px 0'
-                                }
-                            }),
-                            originalContentContainer
-                        ]);
-                        const translationDiv = Utils.createElement('div', {
-                            className: 'translation-wrapper'
-                        });
-                        translationDiv.innerHTML = Features.Translation._markdownToHtml(translatedText);
-                        wrapperElement.insertBefore(translationDiv, buttonsContainerInWrapper);
-                        wrapperElement.insertBefore(details, buttonsContainerInWrapper);
-                    } catch (error) {
-                        console.error('보조창 번역 실패:', error);
-                        alert(`번역 중 오류가 발생했습니다: ${error.message}`);
-                    } finally {
-                        Utils.toggleLoading(false, button);
-                    }
-                };
-                buttonsContainer.appendChild(translateButton);
+                            const buttonsContainerInWrapper = wrapperElement.querySelector('.buttons-container');
+                            const childrenToWrap = [...wrapperElement.children].filter(child => child !== buttonsContainerInWrapper);
+                            const originalContentContainer = Utils.createElement('div');
+                            childrenToWrap.forEach(child => originalContentContainer.appendChild(child));
+                            const details = Utils.createElement('details', { open: false }, [
+                                Utils.createElement('summary', { textContent: '원문 보기', style: { cursor: 'pointer', fontWeight: 'bold', margin: '10px 0' }}),
+                                originalContentContainer
+                            ]);
+                            const translationDiv = Utils.createElement('div', { className: 'translation-wrapper' });
+                            translationDiv.innerHTML = Features.Translation._markdownToHtml(translatedText);
+                            wrapperElement.insertBefore(translationDiv, buttonsContainerInWrapper);
+                            wrapperElement.insertBefore(details, buttonsContainerInWrapper);
+                        } catch (error) {
+                            console.error('보조창 번역 실패:', error);
+                            alert(`번역 중 오류가 발생했습니다: ${error.message}`);
+                        } finally {
+                            Utils.toggleLoading(false, button);
+                        }
+                    };
+
+                    buttonsContainer.append(copyButton, translateButton);
+                }
 
                 if (typeof response === 'object' && response.imageUrl) {
                     const downloadButton = Utils.createElement('button', {
@@ -7042,15 +7021,12 @@ h1, h2, h3 {
                         textContent: '재생성'
                     });
                     regenerateButton.onclick = async (e) => {
-                        // [CONTEXT AWARE] wrapperElement 내에서 에디터를 찾음
                         const promptTextarea = wrapperElement.querySelector('.image-prompt-editor');
                         if (!promptTextarea) return;
 
                         Utils.toggleLoading(true, e.target);
                         try {
                             const newResponse = await this.regenerateImage(promptTextarea.value);
-
-                            // [CONTEXT AWARE] 현재 컨텍스트(인라인/보조창)에 맞게 결과를 표시
                             const isInline = wrapperElement.id === 'inline-image-panel-content-wrapper';
                             if (isInline) {
                                 const panel = wrapperElement.closest('#inline-image-panel');
@@ -7067,7 +7043,7 @@ h1, h2, h3 {
                     };
                     buttonsContainer.append(downloadButton, regenerateButton);
                 } else {
-                    const regenerateButton = Utils.createElement('button', {
+                     const regenerateButton = Utils.createElement('button', {
                         className: 'form-button primary',
                         textContent: '재생성'
                     });
@@ -7076,11 +7052,30 @@ h1, h2, h3 {
                             alert('재생성할 QR 정보를 찾을 수 없습니다.');
                             return;
                         }
-                        // 텍스트 재생성은 QRExecutor를 통해 실행 (컨텍스트 문제 없음)
                         await QRExecutor.execute(this.currentQrId, e.target);
                     };
                     buttonsContainer.appendChild(regenerateButton);
                 }
+
+                // ==================== [수정 2 & 3: 범용 닫기 버튼 + 위치 조정] ====================
+                const closeButton = Utils.createElement('button', {
+                    className: 'form-button',
+                    textContent: '닫기',
+                    // marginLeft: 'auto' 스타일로 버튼을 오른쪽 끝으로 밀어냅니다.
+                    style: { marginLeft: 'auto' }
+                });
+                closeButton.onclick = () => {
+                    // 현재 컨텍스트가 인라인 패널인지 확인
+                    const inlinePanel = wrapperElement.closest('#inline-image-panel');
+                    if (inlinePanel) {
+                        // 인라인 패널이면 해당 패널을 숨김
+                        inlinePanel.style.display = 'none';
+                    } else {
+                        // 그렇지 않으면 보조창(auxiliary panel)을 닫는 함수를 호출
+                        UI.toggleImagePanel(false);
+                    }
+                };
+                buttonsContainer.appendChild(closeButton);
 
                 return buttonsContainer;
             },
