@@ -114,6 +114,7 @@
      * @property {boolean} remote.visible - 리모콘에 버튼 표시 여부
      * @property {boolean} remote.favorite - 즐겨찾기 리모콘에 버튼 표시 여부
      * @property {string | null} remote.icon - Font Awesome 아이콘 클래스 (e.g., 'fa-solid fa-star')
+     * @property {boolean} [autoExecute] - NAI 생성 완료 후 자동 실행 여부
      */
     // ======================== 1. 기본 설정 및 상수 정의 ========================
     const CONFIG = {
@@ -226,20 +227,28 @@
             return success;
         },
 
-        toggleLoading: function(isLoading, buttonElement, aiType = null) {
+        toggleLoading: function(isLoading, target, aiType = null) {
+            let buttonElement = null;
+
+            // target이 문자열(qrId)이면, 해당 ID를 가진 버튼을 찾음
+            if (typeof target === 'string') {
+                // data-qr-id 속성을 사용하여 정확한 버튼을 찾음
+                buttonElement = document.querySelector(`.qr-remote-button[data-qr-id="${target}"]`);
+            }
+            // target이 HTML 요소이면, 그대로 사용
+            else if (target instanceof HTMLElement) {
+                buttonElement = target;
+            }
+
             if (buttonElement) {
                 if (isLoading) {
-                    // 일단 모든 로딩 클래스를 제거하여 상태를 초기화
                     buttonElement.classList.remove('loading', 'loading-text');
-
-                    // aiType에 따라 적절한 로딩 클래스 추가
                     if (aiType === 'textcompletion') {
                         buttonElement.classList.add('loading-text');
                     } else {
                         buttonElement.classList.add('loading');
                     }
                 } else {
-                    // 로딩이 끝나면 모든 관련 클래스 제거
                     buttonElement.classList.remove('loading', 'loading-text');
                 }
             }
@@ -3630,6 +3639,8 @@ h1, h2, h3 {
 
                 folder.qrs.forEach(qr => {
                     const qrBtn = createButton(qr);
+                    qrBtn.classList.add('qr-remote-button');
+                    qrBtn.dataset.qrId = qr.id;
                     qrBtn.onclick = (e) => {
                         QRExecutor.execute(qr.id, folderBtn);
                         closeAllSubMenus();
@@ -3669,6 +3680,8 @@ h1, h2, h3 {
             });
             visibleFavorites.forEach(qr => {
                 const qrBtn = createButton(qr);
+                qrBtn.classList.add('qr-remote-button');
+                qrBtn.dataset.qrId = qr.id;
                 qrBtn.onclick = (e) => QRExecutor.execute(qr.id, e.currentTarget);
                 favoriteGroup.appendChild(qrBtn);
             });
@@ -4319,7 +4332,8 @@ h1, h2, h3 {
                         visible: true,
                         favorite: false,
                         icon: null
-                    }
+                    },
+                    autoExecute: false,
                 }),
                 layout: [
                     [{
@@ -4454,6 +4468,11 @@ h1, h2, h3 {
                         label: '분류',
                         type: 'category',
                         storageGetter: Storage.getQRs.bind(Storage)
+                    }],
+                    [{
+                        key: 'autoExecute',
+                        label: '자동 실행 (NAI 생성 완료 후)',
+                        type: 'checkbox'
                     }],
                     [{
                         key: 'remote.visible',
@@ -5846,85 +5865,115 @@ h1, h2, h3 {
         }
     };
 
+    // ======================== NEW: 실행 추적 및 UI 피드백 관리자 ========================
+    const ExecutionTracker = {
+        _runningQrs: new Map(), // Map<qrId, { clickedButton: HTMLElement | null }>
+
+        start: function(qrId, clickedButton = null) {
+            if (!qrId || this._runningQrs.has(qrId)) return;
+
+            // 실행 시작 시 QR ID와 클릭된 버튼 정보를 함께 저장
+            this._runningQrs.set(qrId, {
+                clickedButton
+            });
+
+            const qr = Storage.getQRById(qrId);
+            if (!qr) return;
+            const aiPreset = Storage.getAiPresetById(qr.aiPresetId) || Storage.getAiPresetById('ai-default');
+            const aiType = aiPreset ? aiPreset.type : null;
+
+            // 1. 리모컨의 기본 버튼에 로딩 적용
+            Utils.toggleLoading(true, qrId, aiType);
+            // 2. 클릭된 버튼이 있다면, 그 버튼에도 로딩 적용
+            if (clickedButton) {
+                Utils.toggleLoading(true, clickedButton, aiType);
+            }
+        },
+
+        finish: function(qrId) {
+            if (!qrId || !this._runningQrs.has(qrId)) return;
+
+            const trackerInfo = this._runningQrs.get(qrId);
+            if (trackerInfo) {
+                // 1. 리모컨 버튼 로딩 종료
+                Utils.toggleLoading(false, qrId);
+                // 2. 클릭된 버튼이 있었다면 로딩 종료
+                if (trackerInfo.clickedButton) {
+                    Utils.toggleLoading(false, trackerInfo.clickedButton);
+                }
+            }
+            this._runningQrs.delete(qrId);
+        },
+
+        finishAll: function() {
+            // Map의 모든 키(qrId)를 순회하며 finish 호출
+            const allRunningIds = [...this._runningQrs.keys()];
+            allRunningIds.forEach(id => this.finish(id));
+        },
+
+        updateLoadingType(qrId, aiType) {
+            if (!this._runningQrs.has(qrId)) return;
+            const trackerInfo = this._runningQrs.get(qrId);
+            Utils.toggleLoading(true, qrId, aiType);
+            if (trackerInfo.clickedButton) {
+                Utils.toggleLoading(true, trackerInfo.clickedButton, aiType);
+            }
+        },
+
+        isRunning: function(qrId) {
+            return this._runningQrs.has(qrId);
+        }
+    };
+
+
     // ======================== QR 실행기 모듈 (무한 루프 방지 적용) ========================
     const QRExecutor = {
-        /**
-         * 연속 QR 실행의 최대 깊이를 제한하는 상수.
-         * 너무 긴 체인으로 인한 과도한 API 호출을 방지합니다.
-         */
         MAX_MULTI_QR_DEPTH: 10,
 
-        /**
-         * [신규] QR 실행의 공개 진입점. 동시 실행을 처리하고 로딩 상태를 관리합니다.
-         * @param {string} qrId - 실행할 메인 QR의 ID
-         * @param {HTMLElement | null} buttonElement - 로딩 애니메이션을 적용할 요소
-         * @param {Object} [options={}] - 추가 옵션 (한영 입력창 등에서 직접 입력을 전달하기 위함)
-         */
-
-        async execute(qrId, buttonElement, options = {}) {
-            // [수정] 버튼이 이미 로딩 상태이면 중복 실행 방지
-            if (buttonElement && (buttonElement.classList.contains('loading') || buttonElement.classList.contains('loading-text'))) {
+        async execute(qrId, clickedButton = null, options = {}) {
+            if (ExecutionTracker.isRunning(qrId)) {
                 return;
             }
-
-            const mainQr = Storage.getQRById(qrId);
-            if (!mainQr) {
-                alert(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
-                return;
-            }
-
-            // 1. 초기 로딩 상태 설정
-            let currentAiType = null;
-            const initialAiPreset = Storage.getAiPresetById(mainQr.aiPresetId) || Storage.getAiPresetById('ai-default');
-            currentAiType = initialAiPreset ? initialAiPreset.type : null;
-            Utils.toggleLoading(true, buttonElement, currentAiType); // <<-- 원본 코드: 이 부분이 try 블록 밖에 있었음.
 
             try {
-                // 실행할 모든 QR의 ID 목록을 구성
+                // 1. 실행 추적 시작 (로딩 UI 자동 활성화)
+                ExecutionTracker.start(qrId, clickedButton);
+
+                const mainQr = Storage.getQRById(qrId);
+                if (!mainQr) throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
+
                 const qrIdsToRun = [qrId];
                 if (Array.isArray(mainQr.simultaneousQrIds)) {
-                    // [수정] 메인 QR 중복 방지를 위한 필터 추가 (안전성 개선)
                     qrIdsToRun.push(...mainQr.simultaneousQrIds.filter(id => id !== qrId));
                 }
 
-                // 동시 실행은 병렬로 처리합니다.
-                const mainExecutionPromise = this._executeInternal(qrId, buttonElement, {
-                    ...options,
-                    executionPath: []
-                });
-                const simultaneousPromises = qrIdsToRun.slice(1).map(id =>
-                    this._executeInternal(id, buttonElement, {
+                const executionPromises = qrIdsToRun.map(id => {
+                    const isMainQr = id === qrId;
+                    const currentClickedButton = isMainQr ? clickedButton : null;
+                    if (!isMainQr) { // 동시 실행 QR 추적 시작
+                        ExecutionTracker.start(id, currentClickedButton);
+                    }
+                    return this._executeInternal(id, {
                         ...options,
                         executionPath: []
-                    })
-                );
+                    });
+                });
 
-                // 메인 실행이 끝날 때까지 대기
-                await Promise.all([mainExecutionPromise, ...simultaneousPromises]);
+                await Promise.all(executionPromises);
 
             } catch (error) {
-                // 에러 발생 시 UI에 알림
                 console.error(`QR 실행 중 치명적인 오류 발생 (시작 QR: ${qrId}):`, error);
                 alert(`QR 실행 중 오류가 발생했습니다: ${error.message}`);
             } finally {
-                // [핵심 수정] 성공/실패 여부와 관계없이 로딩 상태를 **반드시** 해제
-                Utils.toggleLoading(false, buttonElement);
+                // 2. 모든 실행 추적 및 UI 피드백 종료
+                ExecutionTracker.finishAll();
             }
         },
-        /**
-         * [수정] 단일 QR 실행을 처리하는 내부 함수. (기존 execute 함수에서 변경됨)
-         * @param {string} qrId - 실행할 QR의 ID
-         * @param {HTMLElement | null} buttonElement - 로딩 애니메이션을 적용할 요소
-         * @param {Object} [options={}] - 추가 옵션 객체
-         * @private
-         */
 
-        async _executeInternal(qrId, buttonElement, options = {}) {
+        async _executeInternal(qrId, options = {}) {
             const executionPath = options.executionPath || [];
 
-            // 1. 안전 장치 (무한 루프 방지)
             if (executionPath.length >= this.MAX_MULTI_QR_DEPTH || executionPath.includes(qrId)) {
-                // 상위 execute로 오류 던짐
                 throw new Error(executionPath.length >= this.MAX_MULTI_QR_DEPTH ? '연속 QR 깊이 초과' : '무한 루프 감지');
             }
             const newExecutionPath = [...executionPath, qrId];
@@ -5933,85 +5982,63 @@ h1, h2, h3 {
                 const qr = Storage.getQRById(qrId);
                 if (!qr) throw new Error(`ID가 '${qrId}'인 QR을 찾을 수 없습니다.`);
 
-                let aiPreset = Storage.getAiPresetById(qr.aiPresetId) || Storage.getAiPresetById('ai-default');
+                const aiPreset = Storage.getAiPresetById(qr.aiPresetId) || Storage.getAiPresetById('ai-default');
                 if (!aiPreset) throw new Error(`AI 프리셋을 찾을 수 없습니다.`);
 
-                // 2. [핵심 복원] 연속 실행 중일 때, 다음 QR의 로딩 상태를 *여기서* 업데이트합니다.
-                if (executionPath.length > 0) { // 메인 QR의 첫 실행이 아닐 때만 (첫 실행은 execute에서 이미 처리)
-                    // 현재 AI 타입으로 로딩 애니메이션 업데이트
-                    Utils.toggleLoading(true, buttonElement, aiPreset.type);
-                }
+                // 연속 실행 시, 다음 QR의 AI 타입에 맞춰 로딩 UI를 업데이트
+                ExecutionTracker.updateLoadingType(qrId, aiPreset.type);
 
-                // 3. 사용자 입력 수집 및 프롬프트 조합 (생략 없음)
                 const userInputs = await this._collectUserInputs(qr, options);
-                if (userInputs === null) return;
+                if (userInputs === null) {
+                    return; // 사용자가 입력 취소. finally에서 일괄 처리.
+                };
                 const fullPrompt = await this._assemblePrompt(qr, userInputs, options.previousResponse, options.insertSlot, aiPreset.type);
 
-                // 4. API 요청 및 로깅 (생략 없음)
                 const apiResponse = await ApiHandler.request(aiPreset, fullPrompt);
 
                 if (FirebaseLogger.isEnabled()) {
                     FirebaseLogger.log(qr.id, qr.name, fullPrompt, apiResponse);
                 }
 
-                // 5. [로직 간소화] 후처리 중 'multi_qr'은 여기서 바로 다음 재귀 호출을 실행합니다.
                 if (qr.postProcess.action === 'multi_qr' && qr.postProcess.nextQrId) {
+                    const nextQrId = qr.postProcess.nextQrId;
                     const nextOptions = {
                         previousResponse: apiResponse,
                         insertSlot: qr.postProcess.insertSlot,
                         executionPath: newExecutionPath
                     };
-                    // 재귀 호출
-                    return this._executeInternal(qr.postProcess.nextQrId, buttonElement, nextOptions);
+                    // 연속 실행은 클릭된 버튼이 없으므로 null 전달
+                    await this.execute(nextQrId, null, nextOptions);
                 } else {
-                    // 일반 후처리 실행
-                    await this._handlePostProcess(qr, apiResponse, buttonElement, newExecutionPath);
-                    // 연속 실행이 아닌 경우, 이 함수는 완료되며 로딩 해제는 execute()의 finally가 처리합니다.
-                    return {
-                        finalResponse: apiResponse,
-                        finalAiType: aiPreset.type
-                    };
+                    await this._handlePostProcess(qr, apiResponse, null, newExecutionPath);
                 }
             } catch (error) {
-                // 내부 오류를 execute()의 catch 블록으로 전달
                 throw error;
             }
         },
-        /**
-         * [추가] NAI 본문의 모든 콘텐츠를 로드하기 위해 스크롤을 반복합니다.
-         * @private
-         */
         _loadAllContent: async function() {
-            // NAI의 스크롤 가능한 메인 컨테이너를 선택합니다.
             const scrollContainer = document.querySelector('.conversation-main');
             if (!scrollContainer) {
                 console.warn('전체 텍스트 로딩 실패: 스크롤 컨테이너(.conversation-main)를 찾을 수 없습니다.');
                 return;
             }
-
             console.log('전체 텍스트 로딩 시작...');
             try {
                 let previousHeight = -1;
                 let attempts = 0;
-                const maxAttempts = 30; // 무한 루프 방지를 위한 최대 시도 횟수
-
+                const maxAttempts = 30;
                 while (attempts < maxAttempts) {
                     const currentHeight = scrollContainer.scrollHeight;
                     if (currentHeight === previousHeight) {
-                        // 높이 변화가 없으면 로딩이 완료된 것으로 간주하고 추가 확인
                         await new Promise(resolve => setTimeout(resolve, 500));
                         if (scrollContainer.scrollHeight === currentHeight) {
                             console.log('전체 텍스트 로딩 완료.');
                             break;
                         }
                     }
-
                     previousHeight = currentHeight;
-                    scrollContainer.scrollTop = 0; // 스크롤을 맨 위로 이동하여 이전 내용 로드 트리거
-
-                    // NAI가 콘텐츠를 로드할 시간을 줍니다.
+                    scrollContainer.scrollTop = 0;
                     await new Promise(resolve => setTimeout(resolve, 150));
-
                     attempts++;
                 }
                 if (attempts >= maxAttempts) {
@@ -6020,7 +6047,6 @@ h1, h2, h3 {
             } catch (error) {
                 console.error('전체 텍스트 로딩 중 오류 발생:', error);
             } finally {
-                // 작업이 끝나면 다시 맨 아래로 스크롤하여 사용자 편의성 확보
                 scrollContainer.scrollTop = scrollContainer.scrollHeight;
             }
         },
@@ -6062,12 +6088,12 @@ h1, h2, h3 {
 
                 const slotValue = qr.slots[slotName];
                 if (slotValue) {
-                    if (typeof slotValue === 'string') { // 프롬프트 ID
+                    if (typeof slotValue === 'string') {
                         const promptPreset = Storage.getPromptById(slotValue);
                         if (promptPreset) promptParts.push(promptPreset.content);
-                    } else if (slotValue.type === 'user_input' && userInputs[slotName] !== undefined) { // 사용자 입력
+                    } else if (slotValue.type === 'user_input' && userInputs[slotName] !== undefined) {
                         promptParts.push(userInputs[slotName]);
-                    } else if (slotValue.type === 'lorebook') { // 로어북
+                    } else if (slotValue.type === 'lorebook') {
                         const lorebookText = this._compileLorebookText(slotValue.ids, bodyText);
                         if (lorebookText) promptParts.push(lorebookText);
                     }
@@ -6127,42 +6153,32 @@ h1, h2, h3 {
                     UI.toggleOutputPanel(true);
                     Features.Translation.displayFormattedText(response);
                     break;
-
-                case 'prosemirror': { // 변수 범위 지정을 위한 블록 스코프
+                case 'prosemirror': {
                     const proseMirror = document.querySelector('.ProseMirror');
                     if (!proseMirror) break;
-
-                    // 1. AI 응답을 줄바꿈(\n) 기준으로 나눠서 여러 문단으로 처리합니다.
                     const paragraphsToInsert = response.split('\n').filter(p => p.trim() !== '');
-                    if (paragraphsToInsert.length === 0) break; // 삽입할 내용이 없으면 종료
-
+                    if (paragraphsToInsert.length === 0) break;
                     let lastInsertedParagraphElement = null;
-
-                    // 2. 각 문단을 순회하며 항상 새로운 <p><span class="userText">...</span></p>를 생성하여 추가합니다.
                     paragraphsToInsert.forEach(pText => {
                         const span = document.createElement('span');
-                        span.className = 'userText'; // 요청된 클래스명으로 설정
+                        span.className = 'userText';
                         span.textContent = pText;
-
                         const newParagraph = document.createElement('p');
                         newParagraph.appendChild(span);
                         proseMirror.appendChild(newParagraph);
                         lastInsertedParagraphElement = newParagraph;
                     });
-
-                    // 3. 마지막으로 삽입된 텍스트의 끝으로 커서를 이동시키고 해당 위치로 스크롤합니다.
                     if (lastInsertedParagraphElement) {
                         const finalSpan = lastInsertedParagraphElement.querySelector('span.userText');
-                        // span 안에 텍스트 노드가 있는지 확인합니다.
                         if (finalSpan && finalSpan.firstChild) {
-                            const finalTextNode = finalSpan.lastChild; // 마지막 텍스트 노드를 대상으로 함
+                            const finalTextNode = finalSpan.lastChild;
                             const range = document.createRange();
                             const sel = window.getSelection();
                             range.setStart(finalTextNode, finalTextNode.length);
-                            range.collapse(true); // 범위를 끝점으로 축소
+                            range.collapse(true);
                             sel.removeAllRanges();
                             sel.addRange(range);
-                            proseMirror.focus(); // 편집기에 포커스 보장
+                            proseMirror.focus();
                             lastInsertedParagraphElement.scrollIntoView({
                                 behavior: 'smooth',
                                 block: 'end'
@@ -6171,51 +6187,29 @@ h1, h2, h3 {
                     }
                     break;
                 }
-
                 case 'image_panel':
                     Features.Image.displayInPanel(response, qr.id);
                     break;
-                case 'inline_image_panel': { // 변수 스코프를 위해 블록 사용
-                    // 1. QR 실행 시점에 패널을 찾거나 생성
+                case 'inline_image_panel': {
                     const panel = UI.findOrCreateInlineImagePanel();
-
-                    // 2. 패널이 성공적으로 준비되었을 때만 내용 표시
                     if (panel) {
                         Features.Image.displayInline(response, qr.id, panel);
                     } else {
-                        // 패널 삽입 위치를 찾지 못한 경우 사용자에게 알림
                         alert('인라인 삽화를 위한 위치(.tts-controls)를 찾을 수 없습니다. 현재 페이지에서는 이 기능을 사용할 수 없습니다.');
                     }
                     break;
                 }
-
                 case 'multi_qr':
-                    if (qr.postProcess.nextQrId) {
-                        // [추가] 다음 QR 실행 직전, 다음 QR의 AI 타입을 확인하여 로딩 상태 업데이트
-                        const nextQr = Storage.getQRById(qr.postProcess.nextQrId);
-                        if (nextQr) {
-                            const nextAiPreset = Storage.getAiPresetById(nextQr.aiPresetId) || Storage.getAiPresetById('ai-default');
-                            if (nextAiPreset) {
-                                Utils.toggleLoading(true, buttonElement, nextAiPreset.type);
-                            }
-                        }
-
-                        const nextOptions = {
-                            previousResponse: response,
-                            insertSlot: qr.postProcess.insertSlot,
-                            executionPath: executionPath
-                        };
-                        // 재귀 호출을 _executeInternal로 변경
-                        await this._executeInternal(qr.postProcess.nextQrId, buttonElement, nextOptions);
-                    }
+                    // 연속 실행은 이제 execute에서 처리되므로 이 블록은 비워둡니다.
+                    // 단, 하위호환성을 위해 케이스는 남겨둡니다.
                     break;
-
                 case 'none':
                 default:
                     break;
             }
         }
     };
+
     // ======================== NEW: API 핸들러 모듈 ========================
     const ApiHandler = {
         /**
@@ -6841,7 +6835,9 @@ h1, h2, h3 {
                     className: 'generated-image',
                     src: imageData.imageUrl,
                     alt: '생성된 삽화',
-                    style: { display: 'block' }
+                    style: {
+                        display: 'block'
+                    }
                 });
                 const imageLink = Utils.createElement('a', {
                     href: imageData.imageUrl,
@@ -6851,6 +6847,11 @@ h1, h2, h3 {
                 imageLink.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     imageLink.click();
+                });
+                imageLink.addEventListener('click', (e) => {
+                    if (e.isTrusted) {
+                        e.preventDefault();
+                    }
                 });
                 const promptContainer = Utils.createElement('div', {
                     className: 'prompt-editor-container'
@@ -6874,7 +6875,11 @@ h1, h2, h3 {
 
                 if (!shouldRenderMarkdown && !shouldRenderHtml) {
                     const contentDiv = Utils.createElement('div', {
-                        style: { padding: '5px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+                        style: {
+                            padding: '5px',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
+                        },
                         textContent: text
                     });
                     wrapper.appendChild(contentDiv);
@@ -6907,12 +6912,20 @@ h1, h2, h3 {
                 };
                 const renderHtmlPart = (htmlContent) => {
                     const iframeContainer = Utils.createElement('div', {
-                        style: { width: '100%', overflow: 'hidden' }
+                        style: {
+                            width: '100%',
+                            overflow: 'hidden'
+                        }
                     });
                     const iframe = Utils.createElement('iframe', {
                         srcdoc: htmlContent,
                         sandbox: "allow-scripts allow-same-origin",
-                        style: { width: '100%', height: '90vh', border: 'none', display: 'block' }
+                        style: {
+                            width: '100%',
+                            height: '90vh',
+                            border: 'none',
+                            display: 'block'
+                        }
                     });
                     iframeContainer.appendChild(iframe);
                     wrapper.appendChild(iframeContainer);
@@ -6985,11 +6998,22 @@ h1, h2, h3 {
                             const childrenToWrap = [...wrapperElement.children].filter(child => child !== buttonsContainerInWrapper);
                             const originalContentContainer = Utils.createElement('div');
                             childrenToWrap.forEach(child => originalContentContainer.appendChild(child));
-                            const details = Utils.createElement('details', { open: false }, [
-                                Utils.createElement('summary', { textContent: '원문 보기', style: { cursor: 'pointer', fontWeight: 'bold', margin: '10px 0' }}),
+                            const details = Utils.createElement('details', {
+                                open: false
+                            }, [
+                                Utils.createElement('summary', {
+                                    textContent: '원문 보기',
+                                    style: {
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold',
+                                        margin: '10px 0'
+                                    }
+                                }),
                                 originalContentContainer
                             ]);
-                            const translationDiv = Utils.createElement('div', { className: 'translation-wrapper' });
+                            const translationDiv = Utils.createElement('div', {
+                                className: 'translation-wrapper'
+                            });
                             translationDiv.innerHTML = Features.Translation._markdownToHtml(translatedText);
                             wrapperElement.insertBefore(translationDiv, buttonsContainerInWrapper);
                             wrapperElement.insertBefore(details, buttonsContainerInWrapper);
@@ -7024,9 +7048,14 @@ h1, h2, h3 {
                         const promptTextarea = wrapperElement.querySelector('.image-prompt-editor');
                         if (!promptTextarea) return;
 
-                        Utils.toggleLoading(true, e.target);
+                        // 이제 QRExecutor를 사용하지 않고, 이미지 재생성 로직만 직접 처리합니다.
+                        // 로딩 UI는 버튼 자신(e.currentTarget)에게 직접 적용합니다.
+                        const clickedButton = e.currentTarget;
+                        Utils.toggleLoading(true, clickedButton);
                         try {
                             const newResponse = await this.regenerateImage(promptTextarea.value);
+
+                            // 현재 컨텍스트에 따라 올바른 display 함수를 호출하여 UI를 새로고침합니다.
                             const isInline = wrapperElement.id === 'inline-image-panel-content-wrapper';
                             if (isInline) {
                                 const panel = wrapperElement.closest('#inline-image-panel');
@@ -7038,12 +7067,14 @@ h1, h2, h3 {
                             alert(`재생성 실패: ${error.message}`);
                             console.error(error);
                         } finally {
-                            Utils.toggleLoading(false, e.target);
+                            // 성공하든 실패하든, 반드시 로딩 상태를 해제합니다.
+                            Utils.toggleLoading(false, clickedButton);
                         }
                     };
+
                     buttonsContainer.append(downloadButton, regenerateButton);
                 } else {
-                     const regenerateButton = Utils.createElement('button', {
+                    const regenerateButton = Utils.createElement('button', {
                         className: 'form-button primary',
                         textContent: '재생성'
                     });
@@ -7052,7 +7083,7 @@ h1, h2, h3 {
                             alert('재생성할 QR 정보를 찾을 수 없습니다.');
                             return;
                         }
-                        await QRExecutor.execute(this.currentQrId, e.target);
+                        await QRExecutor.execute(this.currentQrId, e.currentTarget);
                     };
                     buttonsContainer.appendChild(regenerateButton);
                 }
@@ -7062,7 +7093,9 @@ h1, h2, h3 {
                     className: 'form-button',
                     textContent: '닫기',
                     // marginLeft: 'auto' 스타일로 버튼을 오른쪽 끝으로 밀어냅니다.
-                    style: { marginLeft: 'auto' }
+                    style: {
+                        marginLeft: 'auto'
+                    }
                 });
                 closeButton.onclick = () => {
                     // 현재 컨텍스트가 인라인 패널인지 확인
@@ -7101,6 +7134,83 @@ h1, h2, h3 {
         }
     };
 
+    // ======================== NEW: 자동 실행 모듈 (컨텍스트 인지 최종 버전) ========================
+    const AutoExecutor = {
+        // isGenerating 상태: null(비활성), false(활성/대기중), true(생성중)
+        isGenerating: null,
+
+        /**
+         * 자동 실행이 설정된 모든 QR을 찾아 실행하고, 각 버튼에 로딩 애니메이션을 적용합니다.
+         */
+        run: function() {
+            setTimeout(() => {
+                const allQrs = Storage.getQRs();
+                const qrsToRun = allQrs.filter(qr => qr.autoExecute);
+
+                if (qrsToRun.length > 0) {
+                    console.log(`[QR 자동 실행] ${qrsToRun.length}개의 QR을 실행합니다.`);
+                    const remoteButtons = document.querySelectorAll('#remote-control .remote-button');
+                    const qrButtonMap = new Map();
+                    remoteButtons.forEach(button => {
+                        const qrId = button.dataset.qrId;
+                        if (qrId) {
+                            qrButtonMap.set(qrId, button);
+                        }
+                    });
+                    qrsToRun.forEach(qr => {
+                        const buttonElement = qrButtonMap.get(qr.id) || null;
+                        QRExecutor.execute(qr.id, buttonElement);
+                    });
+                }
+            }, 500);
+        },
+
+        /**
+         * NAI 생성 페이지('.conversation-controls-container' 존재)에서만
+         * Send 버튼의 상태를 감시하여 자동 실행을 트리거합니다.
+         */
+        setupObserver: function() {
+            const mainObserver = new MutationObserver(() => {
+                const isEditorPage = document.querySelector('.conversation-controls-container') !== null;
+
+                // 1. 생성 페이지에 있을 경우
+                if (isEditorPage) {
+                    // 1-1. 시스템이 비활성(null) 상태이면 활성(false) 상태로 전환
+                    if (this.isGenerating === null) {
+                        this.isGenerating = false;
+                        console.log('[QR 자동 실행] 에디터 UI 감지. 시스템을 활성화합니다.');
+                    }
+
+                    const sendButtonExists = document.querySelector('button.send') !== null;
+
+                    // 1-2. 생성 시작/종료 감지 (시스템이 활성화된 상태에서만 작동)
+                    if (this.isGenerating === false && !sendButtonExists) {
+                        // 대기 중 -> 생성 중
+                        this.isGenerating = true;
+                        console.log('[QR 자동 실행] Send 버튼 사라짐 감지 (생성 시작).');
+                    } else if (this.isGenerating === true && sendButtonExists) {
+                        // 생성 중 -> 대기 중 + 자동실행
+                        this.isGenerating = false;
+                        console.log('[QR 자동 실행] Send 버튼 재등장 감지 (생성 완료).');
+                        this.run();
+                    }
+                }
+                // 2. 생성 페이지가 아닐 경우
+                else {
+                    // 2-1. 시스템이 활성 상태였다면 비활성(null) 상태로 되돌려 오작동 방지
+                    if (this.isGenerating !== null) {
+                        this.isGenerating = null;
+                        console.log('[QR 자동 실행] 에디터 UI 벗어남. 시스템을 비활성화합니다.');
+                    }
+                }
+            });
+
+            mainObserver.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    };
     // ======================== 6. 초기화 함수 ========================
 
     function initialize() {
@@ -7125,6 +7235,7 @@ h1, h2, h3 {
 
         // UI 초기화
         UI.init();
+        AutoExecutor.setupObserver();
     }
 
     // 스크립트 실행
