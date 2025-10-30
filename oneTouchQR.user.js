@@ -6755,16 +6755,16 @@ h1, h2, h3 {
                     wrapperElement.appendChild(fallbackDiv);
                 }
 
-                // 2. 공통 버튼을 맨 아래에 추가
-                const buttonsContainer = this._createPanelButtons();
+                // 2. 공통 버튼을 맨 아래에 추가 (어느 wrapper에 속하는지 컨텍스트 전달)
+                const buttonsContainer = this._createPanelButtons(wrapperElement);
                 wrapperElement.appendChild(buttonsContainer);
 
-                // [수정] 콘텐츠가 새로 렌더링된 후 스크롤을 맨 위로 이동
+                // 콘텐츠가 새로 렌더링된 후 스크롤을 맨 위로 이동
                 wrapperElement.scrollTop = 0;
             },
 
             /**
-             * [수정] 보조창(Auxiliary Panel)에 콘텐츠 표시
+             * 보조창(Auxiliary Panel)에 콘텐츠 표시
              */
             displayInPanel: function(response, qrId, overridePromptText = null) {
                 this.cleanup(); // 기존 리소스 정리
@@ -6779,9 +6779,8 @@ h1, h2, h3 {
             },
 
             /**
-             * [추가] 인라인 패널에 콘텐츠 표시 (cleanup 로직 분리)
+             * 인라인 패널에 콘텐츠 표시 (cleanup 로직 분리)
              */
-
             displayInline: function(response, qrId, panelElement) {
                 if (!panelElement) return;
 
@@ -6797,53 +6796,35 @@ h1, h2, h3 {
                 const contentWrapper = panelElement.querySelector('#inline-image-panel-content-wrapper');
                 if (!contentWrapper) return;
 
-                // [수정] 높이 관련 스타일을 초기화합니다.
                 panelElement.style.height = '';
                 panelElement.style.minHeight = '';
-                // [제거] maxHeight 관련 코드를 제거했습니다.
 
                 this._renderContent(response, qrId, contentWrapper);
                 panelElement.style.display = 'block';
 
-                // 응답이 이미지일 경우에만 비율 기반 리사이즈 로직을 추가합니다.
                 if (typeof response === 'object' && response.imageUrl) {
                     const imageElement = contentWrapper.querySelector('img.generated-image');
                     if (imageElement) {
-                        // 리사이즈를 처리할 핸들러 함수 정의
                         const resizeHandler = () => {
                             const aspectRatio = parseFloat(panelElement.dataset.aspectRatio);
                             if (!aspectRatio) return;
-
                             const panelWidth = panelElement.offsetWidth;
                             const newImageHeight = panelWidth * aspectRatio;
-
                             const wrapperStyles = window.getComputedStyle(contentWrapper);
                             const paddingTop = parseFloat(wrapperStyles.paddingTop);
                             const paddingBottom = parseFloat(wrapperStyles.paddingBottom);
-
-                            // 1. 패딩을 포함하여 비율에 따라 계산된 높이
                             const calculatedHeight = newImageHeight + paddingTop + paddingBottom;
-
-                            // 2. 뷰포트 높이 기반의 최대 높이 (px 단위)
                             const viewportMaxHeight = window.innerHeight - 350;
-
-                            // [수정] 둘 중 더 작은 값을 min-height로 설정합니다.
                             const finalHeight = Math.min(calculatedHeight, viewportMaxHeight);
                             panelElement.style.minHeight = `${finalHeight}px`;
                         };
-
-                        // 이미지가 로드되면 실행될 로직
                         const onImageLoad = () => {
                             const aspectRatio = imageElement.naturalHeight / imageElement.naturalWidth;
                             panelElement.dataset.aspectRatio = aspectRatio;
-
                             panelElement._resizeHandler = resizeHandler;
                             window.addEventListener('resize', panelElement._resizeHandler);
-
-                            // 초기 높이를 설정하기 위해 핸들러를 즉시 한 번 실행
                             resizeHandler();
                         };
-
                         if (imageElement.complete) {
                             onImageLoad();
                         } else {
@@ -6856,33 +6837,23 @@ h1, h2, h3 {
             /** @private 이미지와 프롬프트 편집기를 렌더링 */
             _renderImageContent: function(imageData, wrapper, overridePromptText = null) {
                 this.currentBlobUrl = imageData.imageUrl;
-
-                // <img> 요소를 생성합니다.
                 const image = Utils.createElement('img', {
                     className: 'generated-image',
                     src: imageData.imageUrl,
                     alt: '생성된 삽화',
-                    style: { display: 'block' } // 링크의 기본 스타일 영향을 받지 않도록 처리
+                    style: {
+                        display: 'block'
+                    }
                 });
-
-                // 이미지를 감쌀 <a> (링크) 요소를 생성합니다.
                 const imageLink = Utils.createElement('a', {
                     href: imageData.imageUrl,
-                    // download 속성에 저장될 파일 이름을 지정합니다.
                     download: imageData.imageName || 'generated_image.png'
                 });
-
-                // <a> 요소 안에 <img> 요소를 넣습니다.
                 imageLink.appendChild(image);
-
-                // [변경점] contextmenu 이벤트를 가로채서 다운로드를 실행하는 로직 추가
                 imageLink.addEventListener('contextmenu', (e) => {
-                    // 브라우저의 기본 우클릭(길게 누르기) 메뉴가 뜨는 것을 막습니다.
                     e.preventDefault();
-                    // '다운로드' 버튼을 누른 것과 동일하게, 링크의 다운로드 동작을 강제로 실행합니다.
                     imageLink.click();
                 });
-
                 const promptContainer = Utils.createElement('div', {
                     className: 'prompt-editor-container'
                 });
@@ -6891,13 +6862,11 @@ h1, h2, h3 {
                     textContent: '프롬프트 (수정 후 재생성 가능)'
                 });
                 const promptForEditor = overridePromptText !== null ? overridePromptText : imageData.prompt;
+                // [ID -> CLASS 변경]
                 const promptTextarea = Utils.createElement('textarea', {
-                    className: 'form-textarea',
-                    id: 'image-prompt-editor'
+                    className: 'form-textarea image-prompt-editor', // ID 대신 클래스 사용
                 }, promptForEditor || '');
                 promptContainer.append(promptLabel, promptTextarea);
-
-                // 이미지가 포함된 <a> 링크와 프롬프트 편집기를 wrapper에 추가합니다.
                 wrapper.append(imageLink, promptContainer);
             },
             /** @private 텍스트와 HTML이 섞인 콘텐츠를 렌더링 (안정적인 방식으로 변경) */
@@ -6905,9 +6874,7 @@ h1, h2, h3 {
                 const shouldRenderMarkdown = Storage.get('renderMarkdown', true);
                 const shouldRenderHtml = Storage.get('renderHtml', false);
 
-                // 둘 다 꺼져 있으면 순수 텍스트로 렌더링하고 종료
                 if (!shouldRenderMarkdown && !shouldRenderHtml) {
-                    // [수정] 텍스트에도 패딩 적용을 위해 div로 감쌈
                     const contentDiv = Utils.createElement('div', {
                         style: {
                             padding: '5px',
@@ -6919,14 +6886,11 @@ h1, h2, h3 {
                     wrapper.appendChild(contentDiv);
                     return;
                 }
-
-                // HTML 렌더링이 꺼져 있으면 전체를 마크다운으로만 처리
                 if (!shouldRenderHtml) {
                     if (shouldRenderMarkdown) {
                         const contentDiv = Utils.createElement('div');
                         contentDiv.innerHTML = Features.Translation._markdownToHtml(text);
                         contentDiv.style.textAlign = 'left';
-                        // [수정] 텍스트에 패딩 추가
                         contentDiv.style.padding = '5px';
                         wrapper.appendChild(contentDiv);
                     } else {
@@ -6935,7 +6899,6 @@ h1, h2, h3 {
                     return;
                 }
 
-                // --- HTML 렌더링이 켜져 있을 때의 로직 ---
                 const htmlBlockRegex = /```html\r?\n([\s\S]*?)\r?\n?```/g;
                 let lastIndex = 0;
                 let match;
@@ -6943,15 +6906,12 @@ h1, h2, h3 {
                 const renderPart = (content) => {
                     if (content.trim() === '') return;
                     const contentDiv = document.createElement('div');
-                    // [수정] 텍스트에 패딩 추가
                     contentDiv.style.padding = '1em';
                     contentDiv.style.textAlign = 'left';
                     contentDiv.innerHTML = shouldRenderMarkdown ? Features.Translation._markdownToHtml(content) : content.replace(/\n/g, '<br>');
                     wrapper.appendChild(contentDiv);
                 };
-
                 const renderHtmlPart = (htmlContent) => {
-                    // [수정] iframe 컨테이너에서 margin과 border 제거
                     const iframeContainer = Utils.createElement('div', {
                         style: {
                             width: '100%',
@@ -6974,22 +6934,20 @@ h1, h2, h3 {
 
                 while ((match = htmlBlockRegex.exec(text)) !== null) {
                     const textBefore = text.substring(lastIndex, match.index);
-                    renderPart(textBefore); // 이전 텍스트 렌더링
-
+                    renderPart(textBefore);
                     const htmlContent = match[1];
-                    renderHtmlPart(htmlContent); // HTML 블록 렌더링
-
+                    renderHtmlPart(htmlContent);
                     lastIndex = htmlBlockRegex.lastIndex;
                 }
 
                 if (lastIndex < text.length) {
                     const textAfter = text.substring(lastIndex);
-                    renderPart(textAfter); // 나머지 텍스트 렌더링
+                    renderPart(textAfter);
                 }
             },
 
-            /** @private 보조창 하단에 들어갈 버튼들을 생성 */
-            _createPanelButtons: function() {
+            /** @private 보조창 하단에 들어갈 버튼들을 생성. 컨텍스트를 위해 wrapperElement를 받음 */
+            _createPanelButtons: function(wrapperElement) {
                 const buttonsContainer = Utils.createElement('div', {
                     className: 'buttons-container',
                     style: {
@@ -7015,43 +6973,30 @@ h1, h2, h3 {
                 translateButton.onclick = async (e) => {
                     const button = e.currentTarget;
                     if (button.classList.contains('loading')) return;
-
-                    const wrapper = document.getElementById('image-panel-content-wrapper');
-                    if (!wrapper || wrapper.querySelector('.translation-wrapper')) {
-                        // 이미 번역된 내용이 있으면 추가 작업을 방지합니다.
-                        return;
-                    }
+                    if (!wrapperElement || wrapperElement.querySelector('.translation-wrapper')) return;
 
                     const textToTranslate = (typeof this.currentResponse === 'object' && this.currentResponse.prompt) ? this.currentResponse.prompt : (typeof this.currentResponse === 'string' ? this.currentResponse : '');
-
                     if (!textToTranslate.trim()) {
                         alert('번역할 텍스트가 없습니다.');
                         return;
                     }
-
                     Utils.toggleLoading(true, button);
                     try {
                         const translateQr = Storage.getQRById('default-translate');
                         if (!translateQr) throw new Error("기본 번역 QR('default-translate')을 찾을 수 없습니다.");
-
                         const aiPresetId = translateQr.aiPresetId || 'ai-default';
                         const aiPreset = Storage.getAiPresetById(aiPresetId);
                         if (!aiPreset) throw new Error(`기본 번역에 사용할 AI 프리셋(ID: ${aiPresetId})을 찾을 수 없습니다.`);
-
                         const promptPreset = Storage.getPromptById(translateQr.slots.prefix);
                         if (!promptPreset) throw new Error("기본 번역 프롬프트를 찾을 수 없습니다.");
 
-                        // API 요청을 위해 프롬프트와 번역할 텍스트를 조합합니다.
                         const fullPrompt = `${promptPreset.content}\n\n${textToTranslate}`;
                         const translatedText = await ApiHandler.request(aiPreset, fullPrompt);
 
-                        // 원본 콘텐츠를 보존하기 위해 DOM을 조작합니다.
-                        const buttonsContainerInWrapper = wrapper.querySelector('.buttons-container');
-                        const childrenToWrap = [...wrapper.children].filter(child => child !== buttonsContainerInWrapper);
-
+                        const buttonsContainerInWrapper = wrapperElement.querySelector('.buttons-container');
+                        const childrenToWrap = [...wrapperElement.children].filter(child => child !== buttonsContainerInWrapper);
                         const originalContentContainer = Utils.createElement('div');
                         childrenToWrap.forEach(child => originalContentContainer.appendChild(child));
-
                         const details = Utils.createElement('details', {
                             open: false
                         }, [
@@ -7065,17 +7010,12 @@ h1, h2, h3 {
                             }),
                             originalContentContainer
                         ]);
-
-                        // 번역된 결과를 표시할 div를 생성합니다.
                         const translationDiv = Utils.createElement('div', {
                             className: 'translation-wrapper'
                         });
                         translationDiv.innerHTML = Features.Translation._markdownToHtml(translatedText);
-
-                        // 번역 결과와 원문 보기(details)를 버튼 컨테이너 앞에 삽입합니다.
-                        wrapper.insertBefore(translationDiv, buttonsContainerInWrapper);
-                        wrapper.insertBefore(details, buttonsContainerInWrapper);
-
+                        wrapperElement.insertBefore(translationDiv, buttonsContainerInWrapper);
+                        wrapperElement.insertBefore(details, buttonsContainerInWrapper);
                     } catch (error) {
                         console.error('보조창 번역 실패:', error);
                         alert(`번역 중 오류가 발생했습니다: ${error.message}`);
@@ -7102,11 +7042,22 @@ h1, h2, h3 {
                         textContent: '재생성'
                     });
                     regenerateButton.onclick = async (e) => {
-                        const promptTextarea = document.getElementById('image-prompt-editor');
+                        // [CONTEXT AWARE] wrapperElement 내에서 에디터를 찾음
+                        const promptTextarea = wrapperElement.querySelector('.image-prompt-editor');
                         if (!promptTextarea) return;
+
                         Utils.toggleLoading(true, e.target);
                         try {
-                            await this.regenerateImage(promptTextarea.value);
+                            const newResponse = await this.regenerateImage(promptTextarea.value);
+
+                            // [CONTEXT AWARE] 현재 컨텍스트(인라인/보조창)에 맞게 결과를 표시
+                            const isInline = wrapperElement.id === 'inline-image-panel-content-wrapper';
+                            if (isInline) {
+                                const panel = wrapperElement.closest('#inline-image-panel');
+                                this.displayInline(newResponse, this.currentQrId, panel);
+                            } else {
+                                this.displayInPanel(newResponse, this.currentQrId, promptTextarea.value);
+                            }
                         } catch (error) {
                             alert(`재생성 실패: ${error.message}`);
                             console.error(error);
@@ -7125,6 +7076,7 @@ h1, h2, h3 {
                             alert('재생성할 QR 정보를 찾을 수 없습니다.');
                             return;
                         }
+                        // 텍스트 재생성은 QRExecutor를 통해 실행 (컨텍스트 문제 없음)
                         await QRExecutor.execute(this.currentQrId, e.target);
                     };
                     buttonsContainer.appendChild(regenerateButton);
@@ -7133,10 +7085,11 @@ h1, h2, h3 {
                 return buttonsContainer;
             },
 
-
             /**
-             * 현재 프롬프트를 사용하여 이미지 재생성
+             * 현재 프롬프트를 사용하여 이미지 재생성.
+             * [REFACTORED] 이제 display 함수를 호출하지 않고, 생성된 응답 객체를 반환합니다.
              * @param {string} newPromptText - 텍스트에리어에서 수정된 프롬프트
+             * @returns {Promise<Object>} API 응답 객체
              */
             regenerateImage: async function(newPromptText) {
                 const qr = Storage.getQRById(this.currentQrId);
@@ -7146,9 +7099,9 @@ h1, h2, h3 {
                 if (!aiPreset) throw new Error("AI 프리셋을 찾을 수 없습니다.");
                 if (aiPreset.type !== 'novelai') throw new Error("이미지 재생성은 NovelAI 프리셋에서만 지원됩니다.");
 
+                // API 요청 후, 받은 응답을 그대로 반환
                 const response = await ApiHandler.request(aiPreset, newPromptText);
-
-                this.displayInPanel(response, this.currentQrId, newPromptText);
+                return response;
             }
         }
     };
