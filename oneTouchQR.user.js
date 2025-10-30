@@ -6852,14 +6852,29 @@ h1, h2, h3 {
                 }
             },
 
-            /** @private 이미지와 프롬프트 편집기를 렌더링 */
+            /** @private 이미지와 프롬프트 편집기를 렌더링 (우클릭 저장 및 파일명 통일 개선) */
             _renderImageContent: function(imageData, wrapper, overridePromptText = null) {
                 this.currentBlobUrl = imageData.imageUrl;
+
+                // 1. <img> 이미지 요소를 먼저 생성합니다.
                 const image = Utils.createElement('img', {
                     className: 'generated-image',
                     src: imageData.imageUrl,
-                    alt: '생성된 삽화'
+                    alt: '생성된 삽화',
+                    style: { display: 'block' } // 링크의 일부로서 올바르게 표시되도록 스타일 추가
                 });
+
+                // 2. <img>를 감싸는 <a> 링크 요소를 생성합니다.
+                // href에는 이미지의 임시 주소를, download 속성에는 다운로드 버튼과 동일한 파일명을 지정합니다.
+                const imageLink = Utils.createElement('a', {
+                    href: imageData.imageUrl,
+                    // '다운로드' 버튼과 동일한 파일명 로직을 사용합니다.
+                    download: imageData.imageName || 'generated_image.png',
+                    title: '우클릭 후 "다른 이름으로 링크 저장..."을 선택하여 이미지를 다운로드할 수 있습니다.'
+                });
+
+                // 3. <a> 링크 안에 <img>를 넣습니다.
+                imageLink.appendChild(image);
 
                 const promptContainer = Utils.createElement('div', {
                     className: 'prompt-editor-container'
@@ -6875,9 +6890,9 @@ h1, h2, h3 {
                 }, promptForEditor || '');
                 promptContainer.append(promptLabel, promptTextarea);
 
-                wrapper.append(image, promptContainer);
+                // 4. 최종적으로 이미지 링크(<a>)와 프롬프트 컨테이너를 래퍼에 추가합니다.
+                wrapper.append(imageLink, promptContainer);
             },
-
             /** @private 텍스트와 HTML이 섞인 콘텐츠를 렌더링 (안정적인 방식으로 변경) */
             _renderMixedContent: function(text, wrapper) {
                 const shouldRenderMarkdown = Storage.get('renderMarkdown', true);
