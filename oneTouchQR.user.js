@@ -3455,6 +3455,10 @@ h1, h2, h3 {
     border: none;
     overflow-y: auto;
 }
+
+.tts-controls {
+    flex-shrink: 10 !important; /* 축소 우선순위를 매우 높게 설정하여 먼저 줄어들도록 함 */
+}
 #inline-image-panel-content-wrapper {
     display: flex;
     flex-direction: column;
@@ -4326,9 +4330,7 @@ h1, h2, h3 {
             }, '번역, 삽화 등 기본 제공 기능만 초기 설정으로 되돌립니다. 사용자가 만든 다른 QR은 영향을 받지 않습니다.'));
             section.append(backupGroup, resetGroup, restoreDefaultsGroup);
             section.appendChild(Utils.createElement('h4', {}, '개발자 설정'));
-            const debugGroup = Utils.createElement('div', {
-                className: 'form-group'
-            });
+            const debugGroup = Utils.createElement('div', { className: 'form-group' });
             const debugCheckbox = Utils.createElement('input', {
                 className: 'form-checkbox',
                 id: 'debug-mode-checkbox',
@@ -4336,7 +4338,7 @@ h1, h2, h3 {
                 checked: Storage.get('debugModeEnabled', false),
                 onchange: (e) => {
                     Storage.set('debugModeEnabled', e.target.checked);
-                    if (e.target.checked) {
+                    if(e.target.checked) {
                         alert('디버그 모드가 활성화되었습니다. 이제부터 브라우저 콘솔(F12)에 상세 로그가 출력됩니다.');
                     } else {
                         alert('디버그 모드가 비활성화되었습니다.');
@@ -4348,11 +4350,7 @@ h1, h2, h3 {
                 className: 'form-checkbox-label'
             }, [debugCheckbox, '디버그 모드 활성화']);
             const debugDescription = Utils.createElement('p', {
-                style: {
-                    fontSize: '12px',
-                    opacity: '0.8',
-                    margin: '5px 0 0 0'
-                }
+                style: { fontSize: '12px', opacity: '0.8', margin: '5px 0 0 0' }
             }, '스크립트의 상세 동작을 브라우저 개발자 콘솔(F12)에 출력합니다. 평소에는 꺼두는 것을 권장합니다.');
 
             debugGroup.append(debugLabel, debugDescription);
@@ -6781,6 +6779,7 @@ h1, h2, h3 {
             currentQrId: null,
             currentBlobUrl: null,
 
+
             /**
              * 창이 닫힐 때 Blob URL 등 리소스 정리
              */
@@ -6791,7 +6790,39 @@ h1, h2, h3 {
                 const contentWrapper = document.getElementById('image-panel-content-wrapper');
                 if (contentWrapper) contentWrapper.innerHTML = '';
             },
+          _getOtherElementsHeight: function() {
+    const parentContainer = document.querySelector('.conversation-container');
+    if (!parentContainer) {
+        console.warn('[QR] .conversation-container를 찾을 수 없어 기본 높이(350px)를 사용합니다.');
+        return 350;
+    }
 
+    const getElementOccupiedHeight = (element) => {
+        if (!element) return 0;
+        const style = window.getComputedStyle(element);
+        const marginTop = parseFloat(style.marginTop) || 0;
+        const marginBottom = parseFloat(style.marginBottom) || 0;
+        // getBoundingClientRect().height는 소수점까지 정확하게 측정합니다.
+        return element.getBoundingClientRect().height + marginTop + marginBottom;
+    };
+
+    // 각 요소의 높이를 개별 변수에 명확하게 저장합니다.
+    const titleHeight = getElementOccupiedHeight(parentContainer.querySelector('.conversation-title'));
+    const ttsControlsHeight = getElementOccupiedHeight(parentContainer.querySelector('.tts-controls'));
+    const conversationControlsHeight = getElementOccupiedHeight(parentContainer.querySelector('.conversation-controls-container'));
+
+    const parentStyle = window.getComputedStyle(parentContainer);
+    const parentPadding = (parseFloat(parentStyle.paddingTop) || 0) + (parseFloat(parentStyle.paddingBottom) || 0);
+
+    const safetyMargin = 20;
+
+    // 모든 값을 마지막에 한 번에 합산합니다.
+    const totalHeight = titleHeight + 200 + conversationControlsHeight + parentPadding + safetyMargin;
+
+    console.log(`[QR] 동적 높이 계산: Title=${Math.round(titleHeight)}, TTS=${Math.round(ttsControlsHeight)}, Controls=${Math.round(conversationControlsHeight)}, Padding=${Math.round(parentPadding)}, Total=${Math.round(totalHeight)}`);
+
+    return totalHeight;
+},
             /**
              * API 응답을 받아 콘텐츠 유형을 판별하고 콘텐츠를 렌더링합니다.
              * @param {string | Object} response - API 응답. 텍스트 또는 이미지 정보 객체.
@@ -6873,9 +6904,11 @@ h1, h2, h3 {
                             const paddingTop = parseFloat(wrapperStyles.paddingTop);
                             const paddingBottom = parseFloat(wrapperStyles.paddingBottom);
                             const calculatedHeight = newImageHeight + paddingTop + paddingBottom;
-                            const viewportMaxHeight = window.innerHeight - 350;
+const otherElementsHeight = this._getOtherElementsHeight();
+const viewportMaxHeight = window.innerHeight - otherElementsHeight;
                             const finalHeight = Math.min(calculatedHeight, viewportMaxHeight);
                             panelElement.style.minHeight = `${finalHeight}px`;
+                            panelElement.style.maxHeight = `${calculatedHeight}px`;
                         };
                         const onImageLoad = () => {
                             const aspectRatio = imageElement.naturalHeight / imageElement.naturalWidth;
