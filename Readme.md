@@ -3,6 +3,7 @@
 ## **oneTouchQR.user.js**: 최신 원터치툴. NAI 공홈 커스텀 api 요쳥 가능한 qr 버튼 생성 유저 스크립트. (번역, 삽화 생성 기본 지원)
 
 Nai_preset.js: 공홈 그림 생성용 프리셋
+
 one_touch.user.js: 소설 번역용(구버전. 업데이트 중단)
 
 ---
